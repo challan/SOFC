@@ -25,9 +25,9 @@ real(kind=8),parameter :: A1Bt=2.d0, CmBt=1.d0, A0Bt=0.0d0
 
 
 ! I/O Variables
-integer,parameter        :: it_st=15001, it_ed=100000, it_mod=5000
+integer,parameter        :: it_st=15001, it_ed=200000, it_mod=10000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161017"
+character(len=10), parameter :: dates="161018_B"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -41,16 +41,16 @@ real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi, phi_old, Conc, Phi_Pot
 real(kind=8):: tolerance,max_c, min_c, max_phi, min_phi
 integer:: iter,i,j
 
-	
+! 	iter=it_st-1
 !	call initial_conds(phi,Conc)
 !	call write_output(phi,Conc,iter)
-! 	call read_input(Conc,phi,iter)
+!  	call read_input(Conc,phi,iter)
 	
 write(*,*) "!!!!!!!!!!!! Begin Iteration !!!!!!!!!!!!!!"
 	tolerance=1.d-2
 	max_c=MAXVAL(Conc)
 ! do while ((1.d0-max_c) > tolerance)
-! !do iter=it_st,it_ed
+! do iter=it_st,it_ed
 ! 	!!Apply Periodic BC for the concentration
 ! 	call boundary_conds(Conc)
 ! 	!!Apply Periodic BC for the structural parameter
@@ -60,21 +60,11 @@ write(*,*) "!!!!!!!!!!!! Begin Iteration !!!!!!!!!!!!!!"
 ! 	call Diffusion_eqn(phi,Conc)
 ! 	
 ! 	if (mod(iter,it_mod) .eq. 0) then	
-! !		call write_output(phi,Conc,iter)
-! 		max_c = MAXVAL(Conc) 
-! 		min_c = MINVAL(Conc)
-! 		write(*,*) "Iteration no. =",iter
-! 		write(*,*) "Maximum Value of C=",max_c
-! 		write(*,*) "Minimum Value of C=",min_c
-! 		max_phi = MAXVAL(phi) 
-! 		min_phi = MINVAL(phi)
-! 		write(*,*) "Maximum Value of Phi=",max_phi
-! 		write(*,*) "Minimum Value of Phi=",min_phi
-! 
 ! 		call write_output(phi,Conc,iter)
 ! 	endif
-! 	iter=iter+1	
+! ! 	iter=iter+1	
 ! enddo
+! stop
 ! 	write(*,*) 'iter=', iter
 ! 	call write_output(phi,Conc,iter)
 	iter=it_st-1
@@ -87,18 +77,17 @@ do iter=it_st,it_ed
 	call boundary_conds(Conc)
 	!!Apply Periodic BC for the structural parameter
 	call boundary_conds(phi)
+
+	!!Diffusion Iteration
+	call Diffusion_eqn(phi,Conc)
 		
 	call calculate_potential(phi,Conc,Phi_Pot)
 	
 	!!Apply Periodic BC for chemical potential for the Allen-Cahn eqn.
 	call boundary_conds(Phi_Pot)
 
-	phi_old=phi
 	!!Allen-Cahn Iteration
 	call Allen_Cahn_eqn(phi,Phi_Pot)
-
-	!!Diffusion Iteration
-	call Diffusion_eqn(phi_old,Conc)
 
 	if (mod(iter,it_mod) .eq. 0) then	
 		call write_output(phi,Conc,iter)	
@@ -143,8 +132,7 @@ use simulation
 
 	! Derivative of the Free-energy function for Alpha phase
 	dG_dCAl=2.0d0*A1Al*(ConcAl-CmAl)
-! 	write(*,*) maxval(dG_dCAl),minval(dG_dCAl)
-! 	stop
+
 	! Second Derivative of the Free-energy function	w.r.t. overall composition
 	ddG_dC2=((2.0d0*A1Bt)*(2.0d0*A1Al))/((1.d0-Hfunc)*(2.0d0*A1Bt)+Hfunc*(2.0d0*A1Al))	
 
@@ -335,13 +323,13 @@ use simulation
 	write(iteration,format_string)iter	
 
 	
-	filename='data/'//trim(s)//'_phi_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_phi_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
 	write(1) phi(1:nx,1:ny)
 	close(1)	
 
-	filename='data/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
 	write(2) Conc(1:nx,1:ny)
@@ -385,7 +373,7 @@ use simulation
 	write(iteration,format_string)iter
 
 
-	filename='data/'//trim(s)//'_phi_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_phi_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='old')!,ACCESS="STREAM")
 	read(1) phi(1:nx,1:ny)
@@ -394,7 +382,7 @@ use simulation
 ! 	Initialization of the concentration value
 !  	Conc(:,:)=0.2d0
 
-	filename='data/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	open(2,file=filename,form='unformatted',STATUS='old')
 	read(2) Conc(1:nx,1:ny)
 	close(2)
