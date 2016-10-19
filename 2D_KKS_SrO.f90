@@ -10,11 +10,11 @@ INTEGER, PARAMETER :: DBL = SELECTED_REAL_KIND (p=13)      ! Double data kind
 
 ! Simulation Variables
 ! System Size
-integer,parameter        :: nx=2000,ny=2000
+integer,parameter        :: nx=200,ny=200
 ! Spatial and time-stepping sizes
 real(kind=8),parameter :: dt=.01d0,dx=1.d0,dy=1.d0
 ! Interfacial width controlling parameters
-real(kind=8),parameter :: epsilon2=4.0d0,W=8.0d0
+real(kind=8),parameter :: eps2=4.0d0,W=8.0d0
 ! Chemical and interfacial kinetic mobilities
 ! Al stands for the matrix alpha phase (LSCF)
 ! Bt stands for the beta precipitate phase (SrO)
@@ -27,7 +27,7 @@ real(kind=8),parameter :: A1Bt=4.d0, CmBt=1.d0, A0Bt=0.0d0
 ! I/O Variables
 integer,parameter        :: it_st=1, it_ed=100000, it_mod=10000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161018_B"
+character(len=10), parameter :: dates="161019_B"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -41,35 +41,35 @@ real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi, phi_old, Conc, Conc_old, Phi_Pot
 real(kind=8):: tolerance, max_c, min_c, max_phi, min_phi
 integer:: iter,i,j,k
 
- 	iter=1
-  	call initial_conds(phi,Conc)
-	
-write(*,*) "!!!!!!!!!!!! Begin Iteration !!!!!!!!!!!!!!"
-	tolerance=1.d-2
-	
-do while (abs(max_c-1.d0) > tolerance)
-	max_c=maxval(Conc)
-	!!Apply Periodic BC for the concentration
-	call boundary_conds(Conc)
-	!!Apply Periodic BC for the concentration
-	call boundary_conds(phi)
-	
-	!!Diffusion Iteration
-	call Diffusion_eqn(phi,Conc)
-	
-	if (mod(iter,it_mod) .eq. 0) then	
-		call write_output(phi,Conc,iter)
-	endif
-	iter=iter+1	
-enddo
+!  	iter=1
+!   	call initial_conds(phi,Conc)
+! 	
+! write(*,*) "!!!!!!!!!!!! Begin Iteration !!!!!!!!!!!!!!"
+! 	tolerance=1.d-2
+! 	
+! do while (abs(max_c-1.d0) > tolerance)
+! 	max_c=maxval(Conc)
+! 	!!Apply Periodic BC for the concentration
+! 	call boundary_conds(Conc)
+! 	!!Apply Periodic BC for the concentration
+! 	call boundary_conds(phi)
+! 	
+! 	!!Diffusion Iteration
+! 	call Diffusion_eqn(phi,Conc)
+! 	
+! 	if (mod(iter,it_mod) .eq. 0) then	
+! 		call write_output(phi,Conc,iter)
+! 	endif
+! 	iter=iter+1	
+! enddo
 
+	iter=2674
 	write(*,*) 'Done equilibrating the concentration field @ iter=', iter
-	call write_output(phi,Conc,iter)
-	
+!	call write_output(phi,Conc,iter)
+ 	call read_input(Conc,phi,iter)
 	k=iter
 	
-do iter=it_st+(k-1),it_ed
-
+do iter=k+1,k+10
 	!!Apply Periodic BC for the concentration
 	call boundary_conds(Conc)
 	!!Apply Periodic BC for the structural parameter
@@ -88,9 +88,13 @@ do iter=it_st+(k-1),it_ed
 
 	!!Allen-Cahn Iteration
 	call Allen_Cahn_eqn(phi,Phi_Pot)
-
+	
+	
 	if (mod(iter,it_mod) .eq. 0) then	
-		call write_output(phi,Conc,iter)	
+		call write_output(phi,Conc,iter)
+		call write_out(Phi_Pot,iter)
+		write(*,*) sum(phi(1:nx,1:ny))
+
 	endif
 
 enddo
@@ -102,6 +106,7 @@ end program
 !*********************************************************************
 subroutine calculate_functions(Conc,phi,Hfunc,ConcAl,ConcBt,GAl,GBt,dG_dCAl,ddG_dC2,dgdphi,dHfunc_dphi)
 use simulation
+implicit none
 	real(kind=8), intent(in) ::Conc(0:nx+1,0:ny+1)
 	real(kind=8), intent(in) ::phi(0:nx+1,0:ny+1)
 
@@ -142,22 +147,27 @@ use simulation
 	!First derivative of the monotonically increasing function Hfunc
 	dHfunc_dphi=6.0d0*phi-6.0d0*phi**2.d0
 	
+	
 end subroutine
 !*********************************************************************
 !*********************************************************************
 subroutine Allen_Cahn_eqn(phi,Phi_Pot)
 use simulation
+implicit none
 ! Iterate the Allen-Cahn equation.
 	real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi, Phi_Pot
  
   	!! Allen-Cahn Iteration
 	phi=phi-L_phi*Phi_Pot*dt
+	
 
+	
 end subroutine
 !*********************************************************************
 !*********************************************************************
 subroutine calculate_potential(phi,Conc,Phi_Pot)
 use simulation
+implicit none
 ! Calculate the potential term in the Allen-Cahn equation.
 	real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi, Conc
 
@@ -171,10 +181,18 @@ use simulation
 	call calculate_functions(Conc,phi,Hfunc,ConcAl,ConcBt,GAl,GBt,dG_dCAl,ddG_dC2,dgdphi,dHfunc_dphi)
 
 	forall(i=1:nx,j=1:ny)
-		Phi_Pot(i,j)=dgdphi(i,j)-eps2*((phi(i+1,j)+phi(i-1,j)-2.d0*phi(i,j))/(dx*dx) &
-			+(phi(i,j+1)+phi(i,j-1)-2.d0*phi(i,j))/(dy*dy)) &
-			+dHfunc_dphi(i,j)*(GBt(i,j)-GAl(i,j)-(ConcBt(i,j)-ConcAl(i,j))*dG_dCAl(i,j))
+ 		Phi_Pot(i,j)=dgdphi(i,j)-eps2*((phi(i+1,j)+phi(i-1,j)-2.d0*phi(i,j))/(dx*dx) &
+ 			+(phi(i,j+1)+phi(i,j-1)-2.d0*phi(i,j))/(dy*dy)) &
+ 			+dHfunc_dphi(i,j)*(GBt(i,j)-GAl(i,j)-(ConcBt(i,j)-ConcAl(i,j))*dG_dCAl(i,j))
    	end forall
+
+! 	write(*,*) 'GAl min=',minval(GAl),', max=',maxval(GAl)
+! 	write(*,*) 'GBt min=',minval(GBt),', max=',maxval(GBt)
+! 	write(*,*) 'ConcAl min=',minval(ConcAl),', max=',maxval(ConcAl)
+! 	write(*,*) 'ConcBt min=',minval(ConcBt),', max=',maxval(ConcBt)
+! 	write(*,*) 'dG_dCAl min=',minval(dG_dCAl),', max=',maxval(dG_dCAl)
+! 	write(*,*) 'dHfunc_dphi min=',minval(dHfunc_dphi),', max=',maxval(dHfunc_dphi)
+! 	write(*,*) 'Phi_Pot min=',minval(Phi_Pot),', max=',maxval(Phi_Pot)
 
 
 end subroutine
@@ -182,6 +200,7 @@ end subroutine
 !*********************************************************************
 subroutine Diffusion_eqn(phi,Conc)
 use simulation
+implicit none
 ! Iterate the diffusion equation in terms of the gradient of the chemical potential (derivative of the free-energy curve).
 	real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi, Conc, Chem_Mob, div
 
@@ -194,8 +213,8 @@ use simulation
 	
 
 	!The diffusivity dependent mobility term smoothly varies between M_al and M_bt across the interfacial region with the interpolation function h(phi)
-	Chem_Mob=Hfunc*M_bt+(1.d0-Hfunc)*M_al
-	
+ 	Chem_Mob=Hfunc*M_bt+(1.d0-Hfunc)*M_al
+		
 	!!Divergence of M(phi) * grad(df_dc)
     forall(i=1:nx,j=1:ny)
     	div(i,j)=((Chem_Mob(i,j)+Chem_Mob(i+1,j))*(dG_dCAl(i+1,j)-dG_dCAl(i,j))-(Chem_Mob(i,j)+Chem_Mob(i-1,j))*(dG_dCAl(i,j)-dG_dCAl(i-1,j))) / (2.d0*dx*dx) + &
@@ -209,6 +228,7 @@ end subroutine
 !*********************************************************************
 subroutine boundary_conds(phi)
 use simulation
+implicit none
 ! Impose periodic boundary conditions
 	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: phi
 
@@ -223,6 +243,7 @@ end subroutine
 !*********************************************************************
 subroutine initial_conds(phi,Conc)
 use simulation
+implicit none
 
 	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc,phi
 	real(kind=8) ::max_c,min_c,max_phi,min_phi
@@ -273,7 +294,7 @@ end subroutine
 !********************************************************************* 	
 subroutine write_output(phi,Conc,iter)
 use simulation
-
+implicit none
 	real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi,Conc
 	INTEGER :: iter
 	CHARACTER(LEN=100) :: filename
@@ -321,6 +342,44 @@ use simulation
 
 	close(2)
 
+	
+end subroutine
+!*********************************************************************
+!********************************************************************* 	
+subroutine write_out(phi,iter)
+use simulation
+implicit none
+	real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi
+	INTEGER :: iter
+	CHARACTER(LEN=100) :: filename
+	CHARACTER(LEN=10) :: iteration
+	CHARACTER(LEN=4) :: format_string	
+	
+	if (iter < 10) then
+		format_string="(i1)"	
+	elseif (iter < 100) then
+		format_string="(i2)"	
+	elseif (iter < 1000) then
+		format_string="(i3)"	
+	elseif (iter < 10000) then
+		format_string="(i4)"
+	elseif (iter < 100000) then
+		format_string="(i5)"
+	elseif (iter < 1000000) then
+		format_string="(i6)"
+	elseif (iter < 10000000) then
+		format_string="(i7)"
+	else
+		format_string="(i8)"
+	endif
+	
+	write(iteration,format_string)iter	
+		
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Phi_Pot_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(1) phi(1:nx,1:ny)
+	close(1)		
 	
 end subroutine
 !*********************************************************************
