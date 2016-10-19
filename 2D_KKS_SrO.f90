@@ -18,7 +18,7 @@ real(kind=8),parameter :: eps2=4.0d0,W=8.0d0
 ! Chemical and interfacial kinetic mobilities
 ! Al stands for the matrix alpha phase (LSCF)
 ! Bt stands for the beta precipitate phase (SrO)
-real(kind=8),parameter :: M_al=1.d0,M_bt=1.d0,L_phi=1.0d0
+real(kind=8),parameter :: M_al=0.22d0,M_bt=1.25d0,L_phi=1.0d0
 ! Coefficients to the free-energy curves in the form of A1(c-Cm)^2+A0
 real(kind=8),parameter :: A1Al=1.d0, CmAl=0.d0, A0Al=0.0d0
 real(kind=8),parameter :: A1Bt=4.d0, CmBt=1.d0, A0Bt=0.0d0
@@ -27,7 +27,7 @@ real(kind=8),parameter :: A1Bt=4.d0, CmBt=1.d0, A0Bt=0.0d0
 ! I/O Variables
 integer,parameter        :: it_st=1, it_ed=100000, it_mod=10000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161019_B"
+character(len=10), parameter :: dates="161019_C"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -41,35 +41,34 @@ real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi, phi_old, Conc, Conc_old, Phi_Pot
 real(kind=8):: tolerance, max_c, min_c, max_phi, min_phi
 integer:: iter,i,j,k
 
-!  	iter=1
-!   	call initial_conds(phi,Conc)
-! 	
-! write(*,*) "!!!!!!!!!!!! Begin Iteration !!!!!!!!!!!!!!"
-! 	tolerance=1.d-2
-! 	
-! do while (abs(max_c-1.d0) > tolerance)
-! 	max_c=maxval(Conc)
-! 	!!Apply Periodic BC for the concentration
-! 	call boundary_conds(Conc)
-! 	!!Apply Periodic BC for the concentration
-! 	call boundary_conds(phi)
-! 	
-! 	!!Diffusion Iteration
-! 	call Diffusion_eqn(phi,Conc)
-! 	
-! 	if (mod(iter,it_mod) .eq. 0) then	
-! 		call write_output(phi,Conc,iter)
-! 	endif
-! 	iter=iter+1	
-! enddo
+ 	iter=1
+  	call initial_conds(phi,Conc)
+	
+write(*,*) "!!!!!!!!!!!! Begin Iteration !!!!!!!!!!!!!!"
+	tolerance=1.d-2
+	
+do while (abs(max_c-1.d0) > tolerance)
+	max_c=maxval(Conc)
+	!!Apply Periodic BC for the concentration
+	call boundary_conds(Conc)
+	!!Apply Periodic BC for the concentration
+	call boundary_conds(phi)
+	
+	!!Diffusion Iteration
+	call Diffusion_eqn(phi,Conc)
+	
+	if (mod(iter,it_mod) .eq. 0) then	
+		call write_output(phi,Conc,iter)
+	endif
+	iter=iter+1	
+enddo
 
-	iter=2674
 	write(*,*) 'Done equilibrating the concentration field @ iter=', iter
-!	call write_output(phi,Conc,iter)
- 	call read_input(Conc,phi,iter)
+	call write_output(phi,Conc,iter)
+!  	call read_input(Conc,phi,iter)
 	k=iter
 	
-do iter=k+1,k+10
+do iter=it_st+k,it_ed
 	!!Apply Periodic BC for the concentration
 	call boundary_conds(Conc)
 	!!Apply Periodic BC for the structural parameter
