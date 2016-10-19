@@ -25,7 +25,7 @@ real(kind=8),parameter :: A1Bt=4.d0, CmBt=1.d0, A0Bt=0.0d0
 
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=200000, it_mod=10000
+integer,parameter        :: it_st=1, it_ed=100000, it_mod=10000
 character(len=100), parameter :: s = "SrO_on_LSCF"
 character(len=10), parameter :: dates="161018_B"
 
@@ -41,8 +41,8 @@ real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi, phi_old, Conc, Conc_old, Phi_Pot
 real(kind=8):: tolerance, max_c, min_c, max_phi, min_phi
 integer:: iter,i,j,k
 
- 	iter=0
-  	call read_input(Conc,phi,iter)
+ 	iter=1
+  	call initial_conds(phi,Conc)
 	
 write(*,*) "!!!!!!!!!!!! Begin Iteration !!!!!!!!!!!!!!"
 	tolerance=1.d-2
@@ -51,23 +51,22 @@ do while (abs(max_c-1.d0) > tolerance)
 	max_c=maxval(Conc)
 	!!Apply Periodic BC for the concentration
 	call boundary_conds(Conc)
-
+	!!Apply Periodic BC for the concentration
+	call boundary_conds(phi)
+	
 	!!Diffusion Iteration
 	call Diffusion_eqn(phi,Conc)
 	
 	if (mod(iter,it_mod) .eq. 0) then	
 		call write_output(phi,Conc,iter)
 	endif
- 	k=k+1	
+	iter=iter+1	
 enddo
 
 	write(*,*) 'Done equilibrating the concentration field @ iter=', iter
 	call write_output(phi,Conc,iter)
 	
-	
-	iter=k-1
-	call read_input(Conc,phi,iter)
-
+	k=iter
 	
 do iter=it_st+(k-1),it_ed
 
@@ -80,15 +79,15 @@ do iter=it_st+(k-1),it_ed
 	phi_old=phi
 
 	!!Diffusion Iteration
-	call Diffusion_eqn(phi_old,Conc_old)
+	call Diffusion_eqn(phi_old,Conc)
 		
-	call calculate_potential(phi_old,Conc_old,Phi_Pot)
+	call calculate_potential(phi,Conc_old,Phi_Pot)
 	
 	!!Apply Periodic BC for chemical potential for the Allen-Cahn eqn.
 	call boundary_conds(Phi_Pot)
 
 	!!Allen-Cahn Iteration
-	call Allen_Cahn_eqn(phi_old,Phi_Pot)
+	call Allen_Cahn_eqn(phi,Phi_Pot)
 
 	if (mod(iter,it_mod) .eq. 0) then	
 		call write_output(phi,Conc,iter)	
@@ -224,66 +223,50 @@ end subroutine
 !*********************************************************************
 subroutine initial_conds(phi,Conc)
 use simulation
-! Introduce 100 precipitates distributed randomly in the computational domain.
-	real(kind=8), DIMENSION(0:nx+1,0:ny+1) ::phi,phi_temp,Conc
-  	real(kind=8), DIMENSION(100):: xloc, yloc !Normalized coordinates of the centers of the precipitates
-  	real(kind=8):: dist,delta,radius,circle   	
-  	INTEGER:: seed(2), time(8), xcenter(100),ycenter(100) !Actual coordinates of the centers of the precipitates	
-  	INTEGER:: i,j,k,xmin
-  	real(kind=8)::range
-  	
-  	call DATE_AND_TIME(values=time)     ! Get the current time 
-  	seed(1) = time(4) * (360000*time(5) + 6000*time(6) + 100*time(7) + time(8)) 
-  	print *, 'SEED= ', seed(1)
-  	CALL RANDOM_SEED(PUT=seed) 
-  	CALL RANDOM_NUMBER(HARVEST = xloc) 
-  	CALL RANDOM_NUMBER(HARVEST = yloc) 
-  	
-  	xmin=20
-  	range=REAL(nx-40,KIND=DBL)
-  	
-  	xcenter=xmin+floor(xloc*range)
-   	ycenter=xmin+floor(yloc*range)
- 	
- 	write(*,*)xcenter
- 	write(*,*)'----------'
- 	write(*,*)ycenter
- 	
- 	! phi_temp will be the structure parameter for individual precipitate
- 	! all of the phi_temp are combined into a single array phi   	
-   	delta=2.d0*sqrt(2.0d0*epsilon2/W)
-   	radius=10.0d0
-    dist = SQRT(((x-REAL(xcenter(k),KIND=DBL))**2+(y-REAL(ycenter(k),KIND=DBL))**2))
-	tmp = 0.5d0+0.5d0*TANH((radius-dist)/delta)
-	phi_temp(i,j)=tmp
+
+	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc,phi
+	real(kind=8) ::max_c,min_c,max_phi,min_phi
+	INTEGER :: iter,i
+	CHARACTER(LEN=100) :: filename
+	CHARACTER(LEN=10) :: iteration
+	CHARACTER(LEN=4) :: format_string	
 
 
+	if (iter < 10) then
+		format_string="(i1)"	
+	elseif (iter < 100) then
+		format_string="(i2)"	
+	elseif (iter < 1000) then
+		format_string="(i3)"	
+	elseif (iter < 10000) then
+		format_string="(i4)"
+	elseif (iter < 100000) then
+		format_string="(i5)"
+	elseif (iter < 1000000) then
+		format_string="(i6)"
+	elseif (iter < 10000000) then
+		format_string="(i7)"
+	else
+		format_string="(i8)"
+	endif
+	
+	write(iteration,format_string)iter
 
-	do k=1,100 ! 100 precipitates   	
-		DO i = 1, nx
-		x = REAL(i,KIND=DBL)
-			DO j = 1, ny
-			y = REAL(j,KIND=DBL)
-			dist = SQRT(((x-REAL(xcenter(k),KIND=DBL))**2+(y-REAL(ycenter(k),KIND=DBL))**2))
-			tmp = 0.5d0+0.5d0*TANH((radius-dist)/delta)
-			phi_temp(i,j)=tmp
-			END DO
-		END DO
-		phi=phi+phi_temp	 		
-	enddo
-	! since phi could now have values greater than 1 (as a result of addition of phi_temps)
-	! select values
-	DO i = 1, nx
-		DO j = 1, ny
-			if (phi(i,j) .gt. 1.d0) then
-				phi(i,j) = 1.d0
-			endif
-		ENDDO
-	ENDDO	
- 	
-			
- 	! Initialization of the concentration value
- 	Conc(:,:)=0.2d0
+	
+	filename='data/'//trim(s)//'/'//trim(dates)//'/SrO_on_LSCF_phi_t0_161017_Matlab.dat'
+	write(*,*) filename
+	open(1,file=filename,form='unformatted',STATUS='old',ACCESS="STREAM")
+	read(1) phi(1:nx,1:ny)
+	close(1)	
+	
+! 	Initialization of the concentration value
+  	Conc(:,:)=0.2d0	
+
+	write(*,*) "Read Initial Condition"
+	write(*,*) "Maximum Value of Phi=", MAXVAL(phi) 
+	write(*,*) "Minimum Value of Phi=", MINVAL(phi) 	
+ 	write(*,*) "Maximum Value of Conc=", MAXVAL(Conc) 
+	write(*,*) "Minimum Value of Conc=", MINVAL(Conc) 
 		 	
 end subroutine
 !*********************************************************************
@@ -380,8 +363,7 @@ use simulation
 	read(1) phi(1:nx,1:ny)
 	close(1)	
 
-! 	Initialization of the concentration value
-!  	Conc(:,:)=0.2d0
+
 
 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	open(2,file=filename,form='unformatted',STATUS='old')
