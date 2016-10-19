@@ -10,7 +10,7 @@ INTEGER, PARAMETER :: DBL = SELECTED_REAL_KIND (p=13)      ! Double data kind
 
 ! Simulation Variables
 ! System Size
-integer,parameter        :: nx=200,ny=200
+integer,parameter        :: nx=2000,ny=2000
 ! Spatial and time-stepping sizes
 real(kind=8),parameter :: dt=.01d0,dx=1.d0,dy=1.d0
 ! Interfacial width controlling parameters
@@ -25,9 +25,9 @@ real(kind=8),parameter :: A1Bt=4.d0, CmBt=1.d0, A0Bt=0.0d0
 
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=100000, it_mod=10000
+integer,parameter        :: it_st=1, it_ed=500000, it_mod=50000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161019_C"
+character(len=10), parameter :: dates="161019_D"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -91,9 +91,7 @@ do iter=it_st+k,it_ed
 	
 	if (mod(iter,it_mod) .eq. 0) then	
 		call write_output(phi,Conc,iter)
-		call write_out(Phi_Pot,iter)
 		write(*,*) sum(phi(1:nx,1:ny))
-
 	endif
 
 enddo
@@ -159,8 +157,6 @@ implicit none
   	!! Allen-Cahn Iteration
 	phi=phi-L_phi*Phi_Pot*dt
 	
-
-	
 end subroutine
 !*********************************************************************
 !*********************************************************************
@@ -192,7 +188,6 @@ implicit none
 ! 	write(*,*) 'dG_dCAl min=',minval(dG_dCAl),', max=',maxval(dG_dCAl)
 ! 	write(*,*) 'dHfunc_dphi min=',minval(dHfunc_dphi),', max=',maxval(dHfunc_dphi)
 ! 	write(*,*) 'Phi_Pot min=',minval(Phi_Pot),', max=',maxval(Phi_Pot)
-
 
 end subroutine
 !*********************************************************************
