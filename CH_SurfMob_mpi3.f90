@@ -358,7 +358,7 @@ IMPLICIT NONE
 
 	real(kind=8), DIMENSION(Is1-1:Ie1+1,Is2-1:Ie2+1,Is3-1:Ie3+1) ::phi
   	INTEGER:: seed(2), time(8) !Actual coordinates of the centers of the precipitates	
-    INTEGER :: rank, Is1, Is2, Is3, Ie1, Ie2, Ie3
+    INTEGER :: rank, Is1, Is2, Is3, Ie1, Ie2, Ie3, i
 	CHARACTER(LEN=2) :: data_rank !! rank no.
   	CHARACTER(LEN=100) :: filename
   	
@@ -374,7 +374,7 @@ IMPLICIT NONE
 			print*, 'initial condition',minval(phi),maxval(phi)
     endif
 
-	write(data_rank,'(i3)')rank
+	write(data_rank,'(i2)')rank
 	DO i=1,2
   		if(data_rank(i:i)=='')data_rank(i:i)='0'
 	END DO	
@@ -437,7 +437,9 @@ CHARACTER(LEN=4) :: format_string
 	close(2)	
 
 	if (rank .eq. 0) then
-		write(*,*) 'Done Writing Output File ', filename
+		write(*,*) 'iteration=',iter
+		write(*,*) 'done Writing Output File ', filename
+		write(*,*) 'range of phi=',minval(phi),maxval(phi)
 	endif
 END SUBROUTINE write_out
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
