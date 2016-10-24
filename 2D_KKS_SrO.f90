@@ -25,7 +25,7 @@ real(kind=8),parameter :: A1Bt=4.d0, CmBt=1.d0, A0Bt=0.0d0
 
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=500000, it_mod=50000
+integer,parameter        :: it_st=1, it_ed=200000, it_mod=10000
 character(len=100), parameter :: s = "SrO_on_LSCF"
 character(len=10), parameter :: dates="161019_D"
 
@@ -62,7 +62,6 @@ do while (abs(max_c-1.d0) > tolerance)
 	endif
 	iter=iter+1	
 enddo
-
 	write(*,*) 'Done equilibrating the concentration field @ iter=', iter
 	call write_output(phi,Conc,iter)
 !  	call read_input(Conc,phi,iter)
@@ -268,7 +267,7 @@ implicit none
 	write(iteration,format_string)iter
 
 	
-	filename='data/'//trim(s)//'/'//trim(dates)//'/SrO_on_LSCF_phi_t0_161017_Matlab.dat'
+	filename='data/'//trim(s)//'/'//trim(dates)//'/SrO_on_LSCF_phi_t0_'//trim(dates)//'_Matlab.dat'
 	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='old',ACCESS="STREAM")
 	read(1) phi(1:nx,1:ny)
