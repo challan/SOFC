@@ -12,7 +12,7 @@ real(kind=8),parameter :: epsilon2=0.2d0,L_c=1.0d0,W=0.4d0
 
 ! I/O Variables
 character(len=100), parameter :: s = "CH_SurfMob"
-integer,parameter        :: it_st=1, it_ed=100, it_mod=100
+integer,parameter        :: it_st=1, it_ed=200000, it_mod=20000
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -151,12 +151,9 @@ end subroutine
 subroutine initial_conds(c)
 use simulation
 
-	real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) ::c
-  	real(kind=8), DIMENSION(100):: xloc, yloc !Normalized coordinates of the centers of the precipitates
-  	real(kind=8):: dist,delta,radius,circle   	
+	real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) ::c	
   	INTEGER:: seed(2), time(8), xcenter(100),ycenter(100) !Actual coordinates of the centers of the precipitates	
-  	INTEGER:: i,j,k,xmin
-  	real(kind=8)::range
+  	INTEGER:: i,j,k
   	CHARACTER(LEN=100) :: filename
   	
   	call DATE_AND_TIME(values=time)     ! Get the current time 
