@@ -379,7 +379,7 @@ end subroutine
 !********************************************************************* 	
 subroutine read_input(Conc,phi,iter)
 use simulation
-
+implicit none
 	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc,phi
 	real(kind=8) ::max_c,min_c,max_phi,min_phi
 	INTEGER :: iter,i
