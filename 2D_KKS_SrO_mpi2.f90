@@ -25,13 +25,13 @@ INTEGER, PARAMETER :: DBL = SELECTED_REAL_KIND (p=13)      ! Double data kind
 !----------------------------------------------------------+
 
 INCLUDE 'mpif.h'
-INTEGER, PARAMETER :: d1 = 2, d2 = 2       ! partition number in each direction 
+INTEGER, PARAMETER :: d1 = 8, d2 = 8       ! partition number in each direction 
 INTEGER, PARAMETER :: bb = 1                       ! layers of ghost grid
 INTEGER, PARAMETER :: r1Tag=101,l1Tag=102,f1Tag=103,b1Tag=104    ! communicate tag
 
 integer,parameter        :: nx=2000,ny=2000
 ! Spatial and time-stepping sizes
-real(kind=8),parameter :: dt=.01d0,dx=1.d0,dy=1.d0
+real(kind=8),parameter :: dt=.0001d0,dx=1.d0,dy=1.d0
 ! Interfacial width controlling parameters
 real(kind=8),parameter :: eps2=4.0d0,W=8.0d0
 ! Chemical and interfacial kinetic mobilities
@@ -40,14 +40,13 @@ real(kind=8),parameter :: eps2=4.0d0,W=8.0d0
 real(kind=8),parameter :: M_al=0.22d0,M_bt=1.25d0,L_phi=1.0d0
 ! Coefficients to the free-energy curves in the form of A1(c-Cm)^2+A0
 real(kind=8),parameter :: A1Al=1.d0, CmAl=0.d0, A0Al=0.0d0
-real(kind=8),parameter :: A1Bt=4.d0, CmBt=1.d0, A0Bt=0.0d0
-
+real(kind=8),parameter :: A1Bt=200.d0, CmBt=1.d0, A0Bt=0.0d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=200000, it_mod=50000
+integer,parameter        :: it_st=450000, it_md=500000, it_ed=550000, it_mod=50000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161024_A"
-character(len=100), parameter :: outdir="data/SrO_on_LSCF/161024_A/"
+character(len=10), parameter :: dates="161025_A"
+character(len=100), parameter :: outdir="data/SrO_on_LSCF/161025_A/"
 
 end module simulation
 !*********************************************************************
@@ -116,48 +115,40 @@ INTEGER L1, L2, S1, S2, Id1, Id2, Is1, Is2, Ie1, Ie2, rank, nsize
 real(kind=DBL), DIMENSION(S1:S1+L1-1,S2:S2+L2-1) ::phi, phi_old, Conc, Conc_old, Phi_Pot
 real(kind=8):: tolerance, max_c, min_c, max_phi, min_phi
 integer:: iter,i,j,k
-
+character(len=10) currenttime
 ! real grid points inside the subdomain (without halo cells) 
 Is1 = S1 + bb
 Ie1 = S1 + L1 - 1 - bb
 Is2 = S2 + bb
 Ie2 = S2 + L2 - 1 - bb
 
-if (rank .eq. 0) then	
-	call DATE_AND_TIME(time=currenttime) 
-	write(*,*) 'Current Time = ',currenttime
-endif
 
-! iter=1
-! call initial_conds(Is1,Ie1,Is2,Ie2,phi,Conc)
-! 	
-! write(*,*) "!!!!!!!!!!!! Begin Iteration !!!!!!!!!!!!!!"
-! 	tolerance=1.d-2
-! 	
-! do while (abs(max_c-1.d0) > tolerance)
-! 	max_c=maxval(Conc)
-! 	!!Apply Periodic BC for the concentration
-! 	call commuBC(rank,Id1,Id2,L1,L2,S1,S2,Conc)
-! 	
-! 	!!Apply Periodic BC for the concentration
-! 	call commuBC(rank,Id1,Id2,L1,L2,S1,S2,phi)
-! 	
-! 	!!Diffusion Iteration
-! 	call Diffusion_eqn(Is1,Ie1,Is2,Ie2,phi,Conc)
-! 	
-! 	if (mod(iter,it_mod) .eq. 0) then	
-! 		call write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)
-! 	endif
-! 	iter=iter+1	
-! enddo
-! 	write(*,*) 'Done equilibrating the concentration field @ iter=', iter
-! 	call write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)
-	iter=9588
-	call read_input(rank,Is1,Ie1,Is2,Ie2,Conc,phi,iter)
-	k=iter
+call initial_conds(rank,Is1,Ie1,Is2,Ie2,phi,Conc)
 	
 
-do iter=it_st+k,it_ed
+do iter=it_st+1,it_md
+	
+	!!Apply Periodic BC for the concentration
+	call commuBC(rank,Id1,Id2,L1,L2,S1,S2,Conc)
+	!!Apply Periodic BC for the concentration
+	call commuBC(rank,Id1,Id2,L1,L2,S1,S2,phi)
+	
+	!!Diffusion Iteration
+	call Diffusion_eqn(Is1,Ie1,Is2,Ie2,phi,Conc)
+	
+	if (mod(iter,it_mod) .eq. 0) then
+		if (rank .eq. 0) then	
+			call DATE_AND_TIME(time=currenttime) 
+			write(*,*) 'Current Time = ',currenttime
+		endif	 
+		call write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)		
+	endif	
+		
+	iter=iter+1	
+enddo
+
+	
+do iter=it_md+1,it_ed
 
 	!!Apply Periodic BC for the concentration
 	call commuBC(rank,Id1,Id2,L1,L2,S1,S2,Conc)
@@ -188,7 +179,11 @@ do iter=it_st+k,it_ed
 	endif
 
 enddo
-write(*,*) "!!!!!!!!!!!! END Iteration !!!!!!!!!!!!!!"
+
+if (rank .eq. 0) then	
+	write(*,*) "!!!!!!!!!!!! END Iteration !!!!!!!!!!!!!!"
+endif
+
 
 END SUBROUTINE main
 !*********************************************************************
@@ -396,11 +391,15 @@ implicit none
 	else 
 		format_string="(i2)"	
 	endif	
+	
 	write(rank_no,format_string)rank
+
+	DO i=1,2
+  		if(rank_no(i:i)=='')rank_no(i:i)='0'
+	END DO	
 
 
 	filename=''//trim(outdir)//''//trim(s)//'_phi_t'//trim(iteration)//'_rank'//trim(rank_no)//'_'//trim(dates)//'.dat'
-	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='old')!,ACCESS="STREAM")
 	read(1) phi(Is1:Ie1,Is2:Ie2)
 	close(1)	
@@ -428,7 +427,7 @@ subroutine write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)
 use simulation
 implicit none
 	real(kind=8), DIMENSION(Is1-1:Ie1+1,Is2-1:Ie2+1) ::phi,Conc
-	INTEGER :: iter,Is1,Ie1,Is2,Ie2,rank
+	INTEGER :: iter,Is1,Ie1,Is2,Ie2,rank,i
 	CHARACTER(LEN=100) :: filename
 	CHARACTER(LEN=10) :: iteration
 	CHARACTER(LEN=4) :: format_string	
@@ -462,6 +461,10 @@ implicit none
 	endif	
 	write(rank_no,format_string)rank
 
+	DO i=1,2
+  		if(rank_no(i:i)=='')rank_no(i:i)='0'
+	END DO	
+
 	if (rank .eq. 0) then
 	write(*,*) "======================================================="
 	write(*,*) "Write Output at iter=",trim(iteration)," for rank=",trim(rank_no) 
@@ -473,13 +476,11 @@ implicit none
 	endif
 	
 	filename=''//trim(outdir)//''//trim(s)//'_phi_t'//trim(iteration)//'_rank'//trim(rank_no)//'_'//trim(dates)//'.dat'
-	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
 	write(1) phi(Is1:Ie1,Is2:Ie2)
 	close(1)	
 
 	filename=''//trim(outdir)//''//trim(s)//'_Conc_t'//trim(iteration)//'_rank'//trim(rank_no)//'_'//trim(dates)//'.dat'
-	write(*,*) filename
 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
 	write(2) Conc(Is1:Ie1,Is2:Ie2)
 	close(2)
@@ -487,21 +488,17 @@ implicit none
 end subroutine
 !*********************************************************************
 !********************************************************************* 	
-subroutine initial_conds(Is1,Ie1,Is2,Ie2,phi,Conc)
+subroutine initial_conds(rank,Is1,Ie1,Is2,Ie2,phi,Conc)
 use simulation
 implicit none
 
 	real(kind=DBL), DIMENSION(1:nx,1:ny) :: phi_initial
 	real(kind=DBL), DIMENSION(Is1-1:Ie1+1,Is2-1:Ie2+1) :: Conc,phi
 	real(kind=8) ::max_c,min_c,max_phi,min_phi
-	INTEGER :: iter,i,Is1,Ie1,Is2,Ie2
+	INTEGER :: iter,i,Is1,Ie1,Is2,Ie2,rank
 	CHARACTER(LEN=100) :: filename
-
-write(*,*)'Is1=',Is1,'Ie1=',Ie1
-write(*,*)'Is2=',Is2,'Ie2=',Ie2	
 	
 	filename=''//trim(outdir)//''//trim(s)//'_phi_t0_Matlab.dat'
-	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='old',ACCESS="STREAM")
 	read(1) phi_initial(1:nx,1:ny)
 	close(1)	
@@ -511,10 +508,11 @@ write(*,*)'Is2=',Is2,'Ie2=',Ie2
 ! 	Initialization of the concentration value
   	Conc(:,:)=0.2d0	
 
-	write(*,*) "Read Initial Condition"
-	write(*,*) "Maximum Value of Phi=", MAXVAL(phi) 
-	write(*,*) "Minimum Value of Phi=", MINVAL(phi) 	
- 	write(*,*) "Maximum Value of Conc=", MAXVAL(Conc) 
-	write(*,*) "Minimum Value of Conc=", MINVAL(Conc) 
+
+	write(*,*) "Read Initial Condition for rank=",rank
+! 	write(*,*) "Maximum Value of Phi=", MAXVAL(phi) 
+! 	write(*,*) "Minimum Value of Phi=", MINVAL(phi) 	
+!  	write(*,*) "Maximum Value of Conc=", MAXVAL(Conc) 
+! 	write(*,*) "Minimum Value of Conc=", MINVAL(Conc) 
 		 	
 end subroutine
