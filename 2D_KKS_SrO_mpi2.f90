@@ -31,22 +31,22 @@ INTEGER, PARAMETER :: r1Tag=101,l1Tag=102,f1Tag=103,b1Tag=104    ! communicate t
 
 integer,parameter        :: nx=2000,ny=2000
 ! Spatial and time-stepping sizes
-real(kind=8),parameter :: dt=.001d0,dx=1.d0,dy=1.d0
+real(kind=8),parameter :: dt=.01d0,dx=1.d0,dy=1.d0
 ! Interfacial width controlling parameters
-real(kind=8),parameter :: eps2=6.0d0,W=12.0d0
+real(kind=8),parameter :: eps2=.4d0,W=.8d0
 ! Chemical and interfacial kinetic mobilities
 ! Al stands for the matrix alpha phase (LSCF)
 ! Bt stands for the beta precipitate phase (SrO)
-real(kind=8),parameter :: M_al=1.d0,M_bt=1.d0,L_phi=1.0d0
+real(kind=8),parameter :: M_al=.1d0,M_bt=.1d0,L_phi=1.0d0
 ! Coefficients to the free-energy curves in the form of A1(c-Cm)^2+A0
-real(kind=8),parameter :: A1Al=.05d0, CmAl=0.d0, A0Al=0.0d0
-real(kind=8),parameter :: A1Bt=.05d0, CmBt=1.d0, A0Bt=0.0d0
+real(kind=8),parameter :: A1Al=.5d0, CmAl=0.d0, A0Al=0.0d0
+real(kind=8),parameter :: A1Bt=.5d0, CmBt=1.d0, A0Bt=0.0d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_md=100000, it_ed=3500000, it_mod=500000
+integer,parameter        :: it_st=1, it_md=100000, it_ed=100000, it_mod=10000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161027_B"
-character(len=100), parameter :: outdir="data/SrO_on_LSCF/161027_B/"
+character(len=10), parameter :: dates="161028_A"
+character(len=100), parameter :: outdir="data/SrO_on_LSCF/161028_A/"
 
 end module simulation
 !*********************************************************************
@@ -136,16 +136,16 @@ do iter=it_st,it_md
 	!!Diffusion Iteration
 	call Diffusion_eqn(Is1,Ie1,Is2,Ie2,phi,Conc)
 	
-! 	if (mod(iter,it_mod) .eq. 0) then
-! 		if (rank .eq. 0) then	
-! 			call DATE_AND_TIME(time=currenttime) 
-! 			write(*,*) 'Current Time = ',currenttime
-! 		endif	 
-! 		call write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)		
-! 	endif	
+	if (mod(iter,it_mod) .eq. 0) then
+		if (rank .eq. 0) then	
+			call DATE_AND_TIME(time=currenttime) 
+			write(*,*) 'Current Time = ',currenttime
+		endif	 
+		call write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)		
+	endif	
 		
 enddo
-	call write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)
+	!call write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)
 do iter=it_md+1,it_ed
 
 	!!Apply Periodic BC for the concentration
