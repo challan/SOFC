@@ -33,7 +33,7 @@ integer,parameter        :: nx=2000,ny=2000
 ! Spatial and time-stepping sizes
 real(kind=8),parameter :: dt=.01d0,dx=1.d0,dy=1.d0
 ! Interfacial width controlling parameters
-real(kind=8),parameter :: eps2=.4d0,W=.8d0
+real(kind=8),parameter :: eps2=2.d0,W=4.d0
 ! Chemical and interfacial kinetic mobilities
 ! Al stands for the matrix alpha phase (LSCF)
 ! Bt stands for the beta precipitate phase (SrO)
@@ -43,10 +43,10 @@ real(kind=8),parameter :: A1Al=.5d0, CmAl=0.d0, A0Al=0.0d0
 real(kind=8),parameter :: A1Bt=.5d0, CmBt=1.d0, A0Bt=0.0d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_md=100000, it_ed=100000, it_mod=10000
+integer,parameter        :: it_st=1, it_md=100000, it_ed=200000, it_mod=100000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161028_A"
-character(len=100), parameter :: outdir="data/SrO_on_LSCF/161028_A/"
+character(len=10), parameter :: dates="161028_B"
+character(len=100), parameter :: outdir="data/SrO_on_LSCF/161028_B/"
 
 end module simulation
 !*********************************************************************
@@ -145,7 +145,9 @@ do iter=it_st,it_md
 	endif	
 		
 enddo
-	!call write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)
+
+call write_output(rank,Is1,Ie1,Is2,Ie2,phi,Conc,iter)		
+
 do iter=it_md+1,it_ed
 
 	!!Apply Periodic BC for the concentration
