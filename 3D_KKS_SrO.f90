@@ -32,9 +32,9 @@ real(kind=8),parameter :: A1Su=1.d0, CmSu=0.13d0, A0Su=0.1d0
 real(kind=8),parameter :: A1Sr=1.d0, CmSr=0.5d0, A0Sr=0.0d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_md=50000,it_ed=100000, it_mod=10000
+integer,parameter        :: it_st=1, it_md=60000,it_ed=100000, it_mod=20000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161104_B"
+character(len=10), parameter :: dates="161108_A"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -44,14 +44,14 @@ program KKS_3D
 use simulation
 implicit none
 
-real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) :: Conc, div, phi, phi_old, Phi_Pot
+real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) :: Conc, div, phi, phi_old, Phi_Pot, flux_x,flux_y,flux_z,dG_dCSu
 
 real(kind=8):: tolerance, max_c, min_c, max_phi, min_phi
 integer:: iter,i,j,k
 
 	iter=0
   	call initial_conds(Conc,phi)
-	call write_output(Conc,phi,iter)
+	!call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
 		
 do iter=it_st,it_md
 
@@ -61,12 +61,12 @@ do iter=it_st,it_md
 	call boundary_conds_3D(phi)
 	
 	! Divergence of grad mu
-	call calculate_divergence_bulk(phi,Conc,div)
+	call calculate_divergence_bulk(phi,Conc,div,flux_x,flux_y,flux_z,dG_dCSu)
   	!! Diffusion Iteration
     Conc=Conc+dt*div
 	
 	if (mod(iter,it_mod) .eq. 0) then	
-		call write_output(Conc,phi,iter)
+		call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
 	endif
 
 enddo
@@ -89,13 +89,13 @@ do iter=it_md+1,it_ed
 	!!Apply Periodic BC for the bulk concentration
 	call boundary_conds_3D(Conc)
 	! Divergence of grad mu on the bulk
-	call calculate_divergence_bulk(phi_old,Conc,div)
+	call calculate_divergence_bulk(phi_old,Conc,div,flux_x,flux_y,flux_z,dG_dCSu)
   	!! Diffusion Iteration
     Conc=Conc+dt*div
 	
 	
-	if (mod(iter,it_mod) .eq. 0) then	
-		call write_output(Conc,phi,iter)
+	if (mod(iter,it_mod/4) .eq. 0) then	
+		call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
 	endif
 
 enddo
@@ -146,11 +146,11 @@ end subroutine
 !*********************************************************************
 !*********************************************************************
 ! Diffusion equation for Sr concentration
-subroutine calculate_divergence_bulk(phi,Conc,div)
+subroutine calculate_divergence_bulk(phi,Conc,div,flux_x,flux_y,flux_z,dG_dCSu)
 use simulation
 implicit none
 ! Calculate the divergence of the gradient of the chemical potential (derivative of the free-energy curve).
-	real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) ::phi, Conc, Chem_Mob, div
+	real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) ::phi, Conc, Chem_Mob, div, flux_x, flux_y, flux_z
 
 	real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) ::Hfunc_phi, ConcSr, ConcSu, GSr, GSu
 	real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) ::dG_dCSu, dgdphi, dHfunc_dphi
@@ -161,23 +161,16 @@ implicit none
 
 	! Bulk diffusivity in the bulk LSCF phase
  	Chem_Mob=M_s*Hfunc_phi+(1-Hfunc_phi)*M_b
-	Chem_Mob=M_b		
+
 	!!Divergence of M(phi) * grad(df_dc)
     forall(i=1:nx,j=1:ny,k=1:nz)
     div(i,j,k)=((Chem_Mob(i,j,k)+Chem_Mob(i+1,j,k))*(dG_dCSu(i+1,j,k)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i-1,j,k))*(dG_dCSu(i,j,k)-dG_dCSu(i-1,j,k))) / (2.d0*dx*dx) + &
     			 ((Chem_Mob(i,j,k)+Chem_Mob(i,j+1,k))*(dG_dCSu(i,j+1,k)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i,j-1,k))*(dG_dCSu(i,j,k)-dG_dCSu(i,j-1,k))) / (2.d0*dy*dy) + &
     			 ((Chem_Mob(i,j,k)+Chem_Mob(i,j,k+1))*(dG_dCSu(i,j,k+1)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i,j,k-1))*(dG_dCSu(i,j,k)-dG_dCSu(i,j,k-1))) / (2.d0*dz*dz)
-    end forall
-
-	! Surface diffusivity on the surface of LSCF. Assume that Sr diffusivity is constant between the surface layer of LSCF and SrO
-!	Chem_Mob=M_s
-
-	!!Divergence of M(phi) * grad(df_dc)
-!     forall(i=1:nx,j=1:ny,k=1:nz)
-!     div(i,j,k)=((Chem_Mob(i,j,k)+Chem_Mob(i+1,j,k))*(dG_dCSu(i+1,j,k)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i-1,j,k))*(dG_dCSu(i,j,k)-dG_dCSu(i-1,j,k))) / (2.d0*dx*dx) + &
-!     			 ((Chem_Mob(i,j,k)+Chem_Mob(i,j+1,k))*(dG_dCSu(i,j+1,k)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i,j-1,k))*(dG_dCSu(i,j,k)-dG_dCSu(i,j-1,k))) / (2.d0*dy*dy) + &
-!     			 ((Chem_Mob(i,j,k)+Chem_Mob(i,j,k+1))*(dG_dCSu(i,j,k+1)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i,j,k-1))*(dG_dCSu(i,j,k)-dG_dCSu(i,j,k-1))) / (2.d0*dz*dz)
-!     end forall
+    flux_x(i,j,k)=-1.0d0*Chem_Mob(i,j,k)*(dG_dCSu(i+1,j,k)-dG_dCSu(i-1,j,k))/(2.d0*dx)
+    flux_y(i,j,k)=-1.0d0*Chem_Mob(i,j,k)*(dG_dCSu(i,j+1,k)-dG_dCSu(i,j-1,k))/(2.d0*dy)
+    flux_z(i,j,k)=-1.0d0*Chem_Mob(i,j,k)*(dG_dCSu(i,j,k+1)-dG_dCSu(i,j,k-1))/(2.d0*dz)
+    end forall	
 
 end subroutine
 !*********************************************************************
@@ -271,10 +264,10 @@ implicit none
 end subroutine
 !*********************************************************************
 !********************************************************************* 	
-subroutine write_output(Conc,phi,iter)
+subroutine write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
 use simulation
 implicit none
-	real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) ::Conc, phi
+	real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) :: flux_x,flux_y,flux_z,dG_dCSu,Conc, phi
 	INTEGER :: iter
 	CHARACTER(LEN=100) :: filename
 	CHARACTER(LEN=10) :: iteration
@@ -319,6 +312,30 @@ implicit none
 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
 	write(2) phi(1:nx,1:ny,1:nz)
 	close(2)
+	
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_x_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(2) flux_x(1:nx,1:ny,1:nz)
+	close(2)
+	
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_y_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(2) flux_y(1:nx,1:ny,1:nz)
+	close(2)
+	
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_z_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(2) flux_z(1:nx,1:ny,1:nz)
+	close(2)
 
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_dG_dCSu_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(2) dG_dCSu(1:nx,1:ny,1:nz)
+	close(2)
+			
 end subroutine
 !*********************************************************************
