@@ -13,7 +13,7 @@ INTEGER, PARAMETER :: DBL = SELECTED_REAL_KIND (p=13)      ! Double data kind
 
 ! Simulation Variables
 ! System Size
-integer,parameter        :: nx=50, ny=50, nz=30
+integer,parameter        :: nx=200, ny=200, nz=30
 ! Spatial and time-stepping sizes
 ! Spatial and time-stepping sizes
 real(kind=8),parameter :: dt=.01d0,dx=1.d0,dy=1.d0,dz=1.d0
@@ -32,9 +32,9 @@ real(kind=8),parameter :: A1Su=1.d0, CmSu=0.13d0, A0Su=0.1d0
 real(kind=8),parameter :: A1Sr=1.d0, CmSr=0.5d0, A0Sr=0.0d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_md=60000,it_ed=100000, it_mod=20000
+integer,parameter        :: it_st=100000, it_md=100000,it_ed=300000, it_mod=20000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161108_A"
+character(len=10), parameter :: dates="161109_A"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -50,26 +50,27 @@ real(kind=8):: tolerance, max_c, min_c, max_phi, min_phi
 integer:: iter,i,j,k
 
 	iter=0
-  	call initial_conds(Conc,phi)
+  	!call initial_conds(Conc,phi)
 	!call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
+	call read_input(Conc,phi,it_st)
 		
-do iter=it_st,it_md
-
-	!!Apply Periodic BC for the surface concentration
-	call boundary_conds_3D(Conc)	
-	!!Apply Periodic BC for the structural parameter
-	call boundary_conds_3D(phi)
-	
-	! Divergence of grad mu
-	call calculate_divergence_bulk(phi,Conc,div,flux_x,flux_y,flux_z,dG_dCSu)
-  	!! Diffusion Iteration
-    Conc=Conc+dt*div
-	
-	if (mod(iter,it_mod) .eq. 0) then	
-		call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
-	endif
-
-enddo
+! do iter=it_st,it_md
+! 
+! 	!!Apply Periodic BC for the surface concentration
+! 	call boundary_conds_3D(Conc)	
+! 	!!Apply Periodic BC for the structural parameter
+! 	call boundary_conds_3D(phi)
+! 	
+! 	! Divergence of grad mu
+! 	call calculate_divergence_bulk(phi,Conc,div,flux_x,flux_y,flux_z,dG_dCSu)
+!   	!! Diffusion Iteration
+!     Conc=Conc+dt*div
+! 	
+! 	if (mod(iter,it_mod) .eq. 0) then	
+! 		call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
+! 	endif
+! 
+! enddo
 
 	
 do iter=it_md+1,it_ed
@@ -92,9 +93,8 @@ do iter=it_md+1,it_ed
 	call calculate_divergence_bulk(phi_old,Conc,div,flux_x,flux_y,flux_z,dG_dCSu)
   	!! Diffusion Iteration
     Conc=Conc+dt*div
-	
-	
-	if (mod(iter,it_mod/4) .eq. 0) then	
+		
+	if (mod(iter,it_mod) .eq. 0) then	
 		call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
 	endif
 
@@ -313,29 +313,83 @@ implicit none
 	write(2) phi(1:nx,1:ny,1:nz)
 	close(2)
 	
-	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_x_t'//trim(iteration)//'_'//trim(dates)//'.dat'
-	write(*,*) filename
-	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-	write(2) flux_x(1:nx,1:ny,1:nz)
-	close(2)
+! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_x_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+! 	write(*,*) filename
+! 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+! 	write(2) flux_x(1:nx,1:ny,1:nz)
+! 	close(2)
+! 	
+! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_y_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+! 	write(*,*) filename
+! 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+! 	write(2) flux_y(1:nx,1:ny,1:nz)
+! 	close(2)
+! 	
+! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_z_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+! 	write(*,*) filename
+! 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+! 	write(2) flux_z(1:nx,1:ny,1:nz)
+! 	close(2)
+! 
+! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_dG_dCSu_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+! 	write(*,*) filename
+! 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+! 	write(2) dG_dCSu(1:nx,1:ny,1:nz)
+! 	close(2)
+			
+end subroutine
+!*********************************************************************
+!********************************************************************* 	
+subroutine read_input(Conc,phi,iter)
+use simulation
+implicit none
+	real(kind=8), DIMENSION(0:nx+1,0:ny+1,0:nz+1) :: Conc, phi
+	INTEGER :: iter
+	CHARACTER(LEN=100) :: filename
+	CHARACTER(LEN=10) :: iteration
+	CHARACTER(LEN=4) :: format_string	
+
+
 	
-	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_y_t'//trim(iteration)//'_'//trim(dates)//'.dat'
-	write(*,*) filename
-	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-	write(2) flux_y(1:nx,1:ny,1:nz)
-	close(2)
+	if (iter < 10) then
+		format_string="(i1)"	
+	elseif (iter < 100) then
+		format_string="(i2)"	
+	elseif (iter < 1000) then
+		format_string="(i3)"	
+	elseif (iter < 10000) then
+		format_string="(i4)"
+	elseif (iter < 100000) then
+		format_string="(i5)"
+	elseif (iter < 1000000) then
+		format_string="(i6)"
+	elseif (iter < 10000000) then
+		format_string="(i7)"
+	else
+		format_string="(i8)"
+	endif
 	
-	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_z_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(iteration,format_string)iter	
+
+	
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
-	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-	write(2) flux_z(1:nx,1:ny,1:nz)
+	open(1,file=filename,form='unformatted',STATUS='old')
+	read(1) Conc(1:nx,1:ny,1:nz)
+	close(1)	
+! 
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_phi_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(2,file=filename,form='unformatted',STATUS='old')
+	read(2) phi(1:nx,1:ny,1:nz)
 	close(2)
 
-	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_dG_dCSu_t'//trim(iteration)//'_'//trim(dates)//'.dat'
-	write(*,*) filename
-	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-	write(2) dG_dCSu(1:nx,1:ny,1:nz)
-	close(2)
+	write(*,*) "Write Output at iter=",iter 
+	write(*,*) "Total Conc Value =",sum(Conc(1:nx,1:ny,1:nz)) 	
+	write(*,*) "Maximum Value of Conc=", MAXVAL(Conc) 
+	write(*,*) "Minimum Value of Conc=", MINVAL(Conc) 	
+ 	write(*,*) "Maximum Value of phi=", MAXVAL(phi) 
+	write(*,*) "Minimum Value of phi=", MINVAL(phi) 
 			
 end subroutine
 !*********************************************************************
