@@ -13,17 +13,18 @@ INTEGER, PARAMETER :: DBL = SELECTED_REAL_KIND (p=13)      ! Double data kind
 
 ! Simulation Variables
 ! System Size
-integer,parameter        :: nx=200, ny=200, nz=30
+integer,parameter        :: nx=50, ny=50, nz=30
 ! Spatial and time-stepping sizes
 ! Spatial and time-stepping sizes
 real(kind=8),parameter :: dt=.01d0,dx=1.d0,dy=1.d0,dz=1.d0
 ! Interfacial width controlling parameters
 real(kind=8),parameter :: eps2=2.d0,W=4.d0,Conc_ini=0.15d0
 ! Chemical and interfacial kinetic mobilities
-! M_s is surface mobility Sr (for the growth of SrO on the Sr-rich surface)
+! M_SrO is mobility Sr in SrO 
+! M_S is surface mobility of Sr (for the growth of SrO on the Sr-rich surface)
 ! D_b is diffusion coefficient of Sr in the bulk LSCF
 ! L_phi is interface kinetic mobility
-real(kind=8),parameter :: M_s=0.1d0,M_b=.01d0,L_phi=1.0d0
+real(kind=8),parameter :: M_SrO=0.1d0, M_s=0.5d0,M_b=.005d0,L_phi=1.0d0
 ! Bu stands for the bulk LSCF phase 
 ! Su stands for the Sr-rich surface phase
 ! Sr stands for SrO oxide phase
@@ -32,9 +33,9 @@ real(kind=8),parameter :: A1Su=1.d0, CmSu=0.13d0, A0Su=0.1d0
 real(kind=8),parameter :: A1Sr=1.d0, CmSr=0.5d0, A0Sr=0.0d0
 
 ! I/O Variables
-integer,parameter        :: it_st=100000, it_md=100000,it_ed=300000, it_mod=20000
+integer,parameter        :: it_st=1, it_md=20000,it_ed=100000, it_mod=10000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161109_A"
+character(len=10), parameter :: dates="161111_A"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -50,27 +51,27 @@ real(kind=8):: tolerance, max_c, min_c, max_phi, min_phi
 integer:: iter,i,j,k
 
 	iter=0
-  	!call initial_conds(Conc,phi)
-	!call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
-	call read_input(Conc,phi,it_st)
+  	call initial_conds(Conc,phi)
+	call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
+	!call read_input(Conc,phi,it_st)
 		
-! do iter=it_st,it_md
-! 
-! 	!!Apply Periodic BC for the surface concentration
-! 	call boundary_conds_3D(Conc)	
-! 	!!Apply Periodic BC for the structural parameter
-! 	call boundary_conds_3D(phi)
-! 	
-! 	! Divergence of grad mu
-! 	call calculate_divergence_bulk(phi,Conc,div,flux_x,flux_y,flux_z,dG_dCSu)
-!   	!! Diffusion Iteration
-!     Conc=Conc+dt*div
-! 	
-! 	if (mod(iter,it_mod) .eq. 0) then	
-! 		call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
-! 	endif
-! 
-! enddo
+do iter=it_st,it_md
+
+	!!Apply Periodic BC for the surface concentration
+	call boundary_conds_3D(Conc)	
+	!!Apply Periodic BC for the structural parameter
+	call boundary_conds_3D(phi)
+	
+	! Divergence of grad mu
+	call calculate_divergence_bulk(phi,Conc,div,flux_x,flux_y,flux_z,dG_dCSu)
+  	!! Diffusion Iteration
+    Conc=Conc+dt*div
+	
+	if (mod(iter,it_mod) .eq. 0) then	
+		call write_output(flux_x,flux_y,flux_z,dG_dCSu,Conc,phi,iter)
+	endif
+
+enddo
 
 	
 do iter=it_md+1,it_ed
@@ -161,12 +162,22 @@ implicit none
 
 	! Bulk diffusivity in the bulk LSCF phase
  	Chem_Mob=M_s*Hfunc_phi+(1-Hfunc_phi)*M_b
-
+	Chem_Mob=M_b
 	!!Divergence of M(phi) * grad(df_dc)
-    forall(i=1:nx,j=1:ny,k=1:nz)
+    forall(i=1:nx,j=1:ny,k=1:nz-1)
     div(i,j,k)=((Chem_Mob(i,j,k)+Chem_Mob(i+1,j,k))*(dG_dCSu(i+1,j,k)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i-1,j,k))*(dG_dCSu(i,j,k)-dG_dCSu(i-1,j,k))) / (2.d0*dx*dx) + &
     			 ((Chem_Mob(i,j,k)+Chem_Mob(i,j+1,k))*(dG_dCSu(i,j+1,k)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i,j-1,k))*(dG_dCSu(i,j,k)-dG_dCSu(i,j-1,k))) / (2.d0*dy*dy) + &
     			 ((Chem_Mob(i,j,k)+Chem_Mob(i,j,k+1))*(dG_dCSu(i,j,k+1)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i,j,k-1))*(dG_dCSu(i,j,k)-dG_dCSu(i,j,k-1))) / (2.d0*dz*dz)
+    flux_x(i,j,k)=-1.0d0*Chem_Mob(i,j,k)*(dG_dCSu(i+1,j,k)-dG_dCSu(i-1,j,k))/(2.d0*dx)
+    flux_y(i,j,k)=-1.0d0*Chem_Mob(i,j,k)*(dG_dCSu(i,j+1,k)-dG_dCSu(i,j-1,k))/(2.d0*dy)
+    flux_z(i,j,k)=-1.0d0*Chem_Mob(i,j,k)*(dG_dCSu(i,j,k+1)-dG_dCSu(i,j,k-1))/(2.d0*dz)
+    end forall	
+
+	Chem_Mob=M_SrO*Hfunc_phi+(1-Hfunc_phi)*M_s
+    forall(i=1:nx,j=1:ny,k=nz:nz)
+    div(i,j,k)=((Chem_Mob(i,j,k)+Chem_Mob(i+1,j,k))*(dG_dCSu(i+1,j,k)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i-1,j,k))*(dG_dCSu(i,j,k)-dG_dCSu(i-1,j,k))) / (2.d0*dx*dx) + &
+    			 ((Chem_Mob(i,j,k)+Chem_Mob(i,j+1,k))*(dG_dCSu(i,j+1,k)-dG_dCSu(i,j,k))-(Chem_Mob(i,j,k)+Chem_Mob(i,j-1,k))*(dG_dCSu(i,j,k)-dG_dCSu(i,j-1,k))) / (2.d0*dy*dy) + &
+    			 	M_b*(dG_dCSu(i,j,k+1)+dG_dCSu(i,j,k-1)-2.d0*dG_dCSu(i,j,k)) / (dz*dz)
     flux_x(i,j,k)=-1.0d0*Chem_Mob(i,j,k)*(dG_dCSu(i+1,j,k)-dG_dCSu(i-1,j,k))/(2.d0*dx)
     flux_y(i,j,k)=-1.0d0*Chem_Mob(i,j,k)*(dG_dCSu(i,j+1,k)-dG_dCSu(i,j-1,k))/(2.d0*dy)
     flux_z(i,j,k)=-1.0d0*Chem_Mob(i,j,k)*(dG_dCSu(i,j,k+1)-dG_dCSu(i,j,k-1))/(2.d0*dz)
