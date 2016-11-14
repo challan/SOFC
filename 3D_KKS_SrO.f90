@@ -16,24 +16,24 @@ INTEGER, PARAMETER :: DBL = SELECTED_REAL_KIND (p=13)      ! Double data kind
 integer,parameter        :: nx=50, ny=50, nz=30
 ! Spatial and time-stepping sizes
 ! Spatial and time-stepping sizes
-real(kind=8),parameter :: dt=.01d0,dx=1.d0,dy=1.d0,dz=1.d0
+real(kind=8),parameter :: dt=.1d0,dx=1.d0,dy=1.d0,dz=1.d0
 ! Interfacial width controlling parameters
-real(kind=8),parameter :: eps2=2.d0,W=4.d0,Conc_ini=0.15d0
+real(kind=8),parameter :: eps2=2.d0,W=4.d0,Conc_ini=0.08d0
 ! Chemical and interfacial kinetic mobilities
 ! M_SrO is mobility Sr in SrO 
 ! M_S is surface mobility of Sr (for the growth of SrO on the Sr-rich surface)
 ! D_b is diffusion coefficient of Sr in the bulk LSCF
 ! L_phi is interface kinetic mobility
-real(kind=8),parameter :: M_SrO=0.1d0, M_s=0.5d0,M_b=.005d0,L_phi=1.0d0
+real(kind=8),parameter :: M_SrO=0.05d0, M_s=0.1d0,M_b=.0025d0,L_phi=1.0d0
 ! Bu stands for the bulk LSCF phase 
 ! Su stands for the Sr-rich surface phase
 ! Sr stands for SrO oxide phase
 !Coefficients to the free-energy curves in the form of A1(c-Cm)^2+A0
-real(kind=8),parameter :: A1Su=1.d0, CmSu=0.13d0, A0Su=0.1d0
+real(kind=8),parameter :: A1Su=1.d0, CmSu=0.08d0, A0Su=0.1d0
 real(kind=8),parameter :: A1Sr=1.d0, CmSr=0.5d0, A0Sr=0.0d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_md=20000,it_ed=100000, it_mod=10000
+integer,parameter        :: it_st=1, it_md=4000,it_ed=40000, it_mod=1000
 character(len=100), parameter :: s = "SrO_on_LSCF"
 character(len=10), parameter :: dates="161111_A"
 
@@ -72,7 +72,7 @@ do iter=it_st,it_md
 	endif
 
 enddo
-
+stop
 	
 do iter=it_md+1,it_ed
 	
@@ -324,29 +324,29 @@ implicit none
 	write(2) phi(1:nx,1:ny,1:nz)
 	close(2)
 	
-! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_x_t'//trim(iteration)//'_'//trim(dates)//'.dat'
-! 	write(*,*) filename
-! 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-! 	write(2) flux_x(1:nx,1:ny,1:nz)
-! 	close(2)
-! 	
-! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_y_t'//trim(iteration)//'_'//trim(dates)//'.dat'
-! 	write(*,*) filename
-! 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-! 	write(2) flux_y(1:nx,1:ny,1:nz)
-! 	close(2)
-! 	
-! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_z_t'//trim(iteration)//'_'//trim(dates)//'.dat'
-! 	write(*,*) filename
-! 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-! 	write(2) flux_z(1:nx,1:ny,1:nz)
-! 	close(2)
-! 
-! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_dG_dCSu_t'//trim(iteration)//'_'//trim(dates)//'.dat'
-! 	write(*,*) filename
-! 	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-! 	write(2) dG_dCSu(1:nx,1:ny,1:nz)
-! 	close(2)
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_x_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(2) flux_x(1:nx,1:ny,1:nz)
+	close(2)
+	
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_y_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(2) flux_y(1:nx,1:ny,1:nz)
+	close(2)
+	
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_flux_z_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(2) flux_z(1:nx,1:ny,1:nz)
+	close(2)
+
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_dG_dCSu_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(2,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(2) dG_dCSu(1:nx,1:ny,1:nz)
+	close(2)
 			
 end subroutine
 !*********************************************************************
