@@ -3,8 +3,8 @@ function main
     clc;
    
     %no. of grid points
-    nx=2000;
-    ny=2000;
+    nx=100;
+    ny=100;
     %grid spacing
     dx=1.0;
     dy=1.0;
@@ -14,139 +14,133 @@ function main
     M=1.0;
     %Timestep, von-Neumann condition for diffusion eqn dt<=(dx^2)/(2D)
     maxdt=(dx^2)/(2.0*D);
-    dt=0.01
+    dt=0.01;
 
     %Constants for parabolic free energies of the two phases
     %f(c)=A0+A1*(C-Cm)^2
     %For matrix phase (alpha)
-    A0Al=0.0;
-    A1Al=1;
-    CmAl=0.0; % the center of the parabola
+    A0Al=.1;
+    A1Al=1.;
+    CmAl=0.5; % the center of the parabola
     
     %For precipiate phase (beta)
     A0Bt=0.0;
-    A1Bt=4;
-    CmBt=1.0; % the center of the parabola
+    A1Bt=1.0;
+    CmBt=0.0; % the center of the parabola
 
     %well-height parameter
-    W=8.0;
+    W=4.0;
     %gradient energy coefficient
-    eps2=4.0;
+    eps2=2.0;
     %interfacial thickness 
-    delta=2.0*sqrt(2.0*eps2/W);
+    delta=2.0;
 
     %Average alloy composition
-    CAlloy=0.2  ;     
-
+    CAlloy=0.48;       
+   
     %X & Y-coordinate array
-    x=linspace(1,2000,nx);
-    [x_coord,y_coord]=meshgrid(x,x);
+    [x_coord,y_coord]=meshgrid(1:nx,1:nx);
 
     %Initial Order-Parameter (one precipitate in the middle)
     %Precipitate phase = 1, matrix phase =0
-%     radius=10.0;
-%     xcenter=1000;
-%     ycenter=1000;
-%     circle=sqrt((x_coord-xcenter).^2+(y_coord-ycenter).^2);
-%     phi=0.5*(1+tanh((radius-circle)/delta));
+    radius=10.0;
+    xcenter=nx/2;
+    ycenter=ny/2;
+    circle=sqrt((x_coord-xcenter).^2+(y_coord-ycenter).^2);
+    phi=0.5*(1+tanh((radius-circle)/delta));
 
-    fname = ['data/SrO_on_LSCF_phi_t0_161017.dat'];
-    fid = fopen(fname);
-    phi = fread(fid,nx*ny,'double');
-    fclose(fid);
-    phi = reshape(phi, [nx ny]);
-    clear a;
-    
     %Initial composition
     Conc=CAlloy*ones(nx,ny);
-    
+        
     iter=0;
     
-%    free_eg_curves(A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl) 
+%     free_eg_curves(A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl) 
 %    free_eg_surface(W,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl)
  
-    for iter=1:2000
-        Conc=diff_iter(phi,Conc,D,dt,dx,dy,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl);
-
-        iter
-        if mod(iter,100) == 0
-            max(Conc(:))
-            min(Conc(:))
-            close all,
-            hfig=figure(1);
-            set(hfig,'Position', [100, 100, 800, 800]);  
-            surface(x_coord,y_coord,Conc);
-            shading interp
-            caxis([-1, 1])
-            c = colorbar;
-            ylabel(c, '$\phi$','fontsize',25,'FontWeight','Bold','interpreter','latex')    
-            axis([1 2000 1 2000 -1 1]);
-            set(gca,'xtick',[1,500,1000,1500,2000],'ytick',[1,500,1000,1500,2000],'fontsize',25,'linewidth',2.5,'fontweight','bold')
-            xlabel({'X-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex')
-            ylabel({'Y-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex') 
-            zlabel({'$C$'},'fontsize',30,'FontWeight','Bold','interpreter','latex')
+    for iter=1:40000
+        Conc=diff_iter(phi,Conc,D,dt,dx,dy,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl);       
+        if mod(iter,5000) == 0
+            iter
+            sum(phi(:))
+            make_SurfacePlots(nx,x_coord,y_coord,phi,Conc,iter)
             pause(0.1)
-%             make_SurfacePlots(x_coord,y_coord,phi,Conc,iter)
+%             fname = ['data/SrO_on_LSCF/161019_B/Variables_t%d_161019_B.sav'];
+%             save(sprintf(fname,iter))
         end
     end
-    stop
-%     save('160915_A/Variables_Part1.mat')
-    load('160915_A/Variables_Final.mat')   
-    for iter=200001:1000000
+%     stop
+%     fname = ['data/SrO_on_LSCF/161019_B/Variables_t%d_161019_B.sav'];
+%     save(sprintf(fname,iter)) 
+    
+    k=iter;
+    for iter=k+1:60000
         Conc_old=Conc;
         phi_old=phi;
         Conc=diff_iter(phi_old,Conc_old,D,dt,dx,dy,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl);
-        phi=AC_iter(phi_old,Conc_old,dt,dx,dy,M,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl);
-        if mod(iter,100000) == 0
+        phi=AC_iter(phi_old,Conc_old,dt,dx,dy,M,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl);       
+        if mod(iter,5000) == 0
             iter
-            make_SurfacePlots(x_coord,y_coord,phi,Conc,iter)
-            save('160915_A/Variables_Final.mat')
+            sum(phi(:))
+            make_SurfacePlots(nx,x_coord,y_coord,phi,Conc,iter)
+             pause(0.1)
+%             fname = ['data/SrO_on_LSCF/161019_B/Variables_t%d_161019_B.sav'];
+%             save(sprintf(fname,iter))
         end
     end
 
 end
-function ans=make_SurfacePlots(x_coord,y_coord,phi,Conc,iter)
+function ans=make_SurfacePlots(nx,x_coord,y_coord,phi,Conc,iter)
     % Plot order-parameter and concentration field
     close all,
     hfig=figure(1);
-    set(hfig,'Position', [100, 100, 800, 2000]);  
+    set(hfig,'Position', [100, 100, 800, 800]);  
     
-    subplot(2,1,1)
-    surface(x_coord,y_coord,phi);
-    axis([-100 100 -100 100 0 1]);
-    set(gca,'xtick',[-100,-50,0,50,100],'ytick',[-100,-50,0,50,100],'fontsize',25,'linewidth',2.5,'fontweight','bold')    
-    xlabel({'X-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex')
-    ylabel({'Y-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex') 
-    zlabel({'$\phi$'},'fontsize',30,'FontWeight','Bold','interpreter','latex') 
-    title(sprintf('iter=%d',iter),'fontsize',30)
-    
-    subplot(2,1,2)
+%     subplot(2,1,1)
+% 
+%     surface(x_coord,y_coord,phi);
+%     shading interp;
+%     az = 0;
+%     el = 90;
+%     view(az, el);     
+%     axis([1 50 1 50 0 1]);
+%     set(gca,'fontsize',25,'linewidth',2.5,'fontweight','bold')    
+%     xlabel({'X-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex')
+%     ylabel({'Y-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex') 
+%     zlabel({'$\phi$'},'fontsize',30,'FontWeight','Bold','interpreter','latex') 
+%     title(sprintf('iter=%d',iter),'fontsize',30)
+%     
+%     subplot(2,1,2)
     surface(x_coord,y_coord,Conc);
-    axis([-100 100 -100 100 0 1.2]);
-    set(gca,'xtick',[-100,-50,0,50,100],'ytick',[-100,-50,0,50,100],'fontsize',25,'linewidth',2.5,'fontweight','bold')
+    shading interp;
+    az = 45;
+    el = 0;
+    view(az, el);     
+    axis([1 nx, 1 nx, -0.2 0.6]);
+    set(gca,'fontsize',25,'linewidth',2.5,'fontweight','bold')    
     xlabel({'X-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex')
     ylabel({'Y-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex') 
     zlabel({'$C$'},'fontsize',30,'FontWeight','Bold','interpreter','latex') 
 
-    filename='161013_A/jpg/profiles_iter%d.jpg'
-    saveas(gcf,sprintf(filename,iter))
-    filename='161013_A/pdf/profiles_iter%d.pdf'
-    save2pdf(sprintf(filename,iter))
+%     filename='data/SrO_on_LSCF/161019_B/jpg/profiles_iter%d.jpg'
+%     saveas(gcf,sprintf(filename,iter))
+%     filename='161013_A/pdf/profiles_iter%d.pdf'
+%     save2pdf(sprintf(filename,iter))
   
 end
 function ans=free_eg_curves(A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl)
-    Conc=linspace(0,1,100); 
+    Conc=linspace(-0.5,1.5,200); 
     close all
     GAl=A0Al+A1Al*(Conc-CmAl).^2.0;
     GBt=A0Bt+A1Bt*(Conc-CmBt).^2.0;   
     plot(Conc,GAl,'-b','linewidth',3);
     hold on
-    plot(Conc,GBt,'-r','linewidth',3);    
+    plot(Conc,GBt,'-r','linewidth',3); 
+    axis([-0.5 1.5 0 4])
     set(gca,'fontsize',20,'linewidth',2.5,'fontweight','bold')    
     xlabel({'$c$'},'fontsize',25,'FontWeight','Bold','interpreter','latex')        
     ylabel({'$f(c,\phi)$'},'fontsize',25,'FontWeight','Bold','interpreter','latex') 
-    legend({'$f^\alpha$','$f^\beta$'},'fontsize',30,'interpreter','latex')
-    save2pdf('160907/free_energy_curves_160907.pdf')
+    legend({'$f^\alpha$','$f^\beta$'},'fontsize',30,'interpreter','latex','location','northwest')
+    save2pdf('data/SrO_on_LSCF/161025_A/free_energy_curves_1601025.pdf')
 end
 function ans=free_eg_surface(W,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl)
     close all
@@ -248,7 +242,7 @@ function ans=chem_pot(phi,Conc,dx,dy,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl)
     ConcBt=ConcBt(phi,Conc,A1Al,CmAl,A1Bt,CmBt);
     dG_dCAl=dG_dCAl(phi,Conc,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl);
     ans=dgdphi(phi,W)-eps2*lap2D(phi,dx,dy)...
-    +dHfunc_dphi(phi).*(GBt-GAl-(ConcBt-ConcAl).*dG_dCAl);
+    +dHfunc_dphi(phi).*(GBt-GAl-(ConcBt-ConcAl).*dG_dCAl);    
 end
 function phi=AC_iter(phi,Conc,dt,dx,dy,M,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl)
     % Explicit time iteration of the Allen-Cahn equation    
@@ -261,21 +255,17 @@ function Conc=diff_iter(phi,Conc,D,dt,dx,dy,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl
     %central differencing and effective mobility at i+1/2
     central_diff1=(circshift(dG_dCAl,[0,-1])-dG_dCAl)/dx;
     effective_M1=(D./circshift(ddG_dC2,[0,-1])+D./ddG_dC2)/2.0;
-    effective_M1=1.0;
     %central differencing and effective mobility at i-1/2    
     central_diff2=(dG_dCAl-circshift(dG_dCAl,[0,1]))/dx;
     effective_M2=(D./circshift(ddG_dC2,[0,1])+D./ddG_dC2)/2.0;
-    effective_M2=1.0;
     x_comp=(central_diff1.*effective_M1-central_diff2.*effective_M2)/dx;    
 
     %central differencing and effective mobility at j+1/2
     central_diff3=(circshift(dG_dCAl,[-1,0])-dG_dCAl)/dx;
     effective_M3=(D./circshift(ddG_dC2,[-1,0])+D./ddG_dC2)/2.0;
-    effective_M3=1.0;
     %central differencing and effective mobility at j-1/2    
     central_diff4=(dG_dCAl-circshift(dG_dCAl,[1,0]))/dx;
     effective_M4=(D./circshift(ddG_dC2,[1,0])+D./ddG_dC2)/2.0;
-    effective_M4=1.0;
     y_comp=(central_diff3.*effective_M3-central_diff4.*effective_M4)/dy;    
     Conc=Conc+dt*(x_comp+y_comp);
 end

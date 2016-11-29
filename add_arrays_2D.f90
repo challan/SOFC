@@ -9,7 +9,7 @@ INTEGER, PARAMETER :: SGL = SELECTED_REAL_KIND (p=6, r=37) ! Single data kind
 INTEGER, PARAMETER :: DBL = SELECTED_REAL_KIND (p=13)      ! Double data kind
 !----------------------------------------------------------+
 
-integer:: nx=2000,ny=2000,np=4,d1=2,d2=2
+integer:: nx=2000,ny=2000,nz=30,np=8,d1=2,d2=4
 
 end module simulation
 !!================================================================================
@@ -24,8 +24,8 @@ end program
 subroutine iterate
 use simulation
 implicit none
-real(kind=DBL):: phi(1:nx,1:ny) 
-real(kind=DBL):: phi_temp(1:nx/d1,1:ny/d2)
+real(kind=DBL):: phi(1:nx,1:ny,1:nz) 
+real(kind=DBL):: phi_temp(1:nx/d1,1:ny/d2,1:nz)
 integer:: output,from1,to1,from2,to2,Id2,Id1,rank,i,d
 character*100  filename1
 character*100  filename2
@@ -54,20 +54,20 @@ do output=1,np
 		
 	write(rank_no,format_string)rank
 
-	filename1='data/SrO_on_LSCF/161024_A/SrO_on_LSCF_Conc_t200000_rank'//trim(rank_no)//'_161024_A.dat'
+	filename1='data/SrO_on_LSCF/161111_B/SrO_on_LSCF_Conc_t200000_rank'//trim(rank_no)//'_161111_B.dat'
  	write(*,*) filename1
  	open  ( unit = 1, file = filename1, status='old', &
                form = 'unformatted')
-	read  (1) phi_temp(1:nx/d1,1:ny/d2)
+	read  (1) phi_temp(1:nx/d1,1:ny/d2,1:nz)
 	close(1)
-	phi(from1:to1,from2:to2)=phi_temp(:,:)
+	phi(from1:to1,from2:to2,1:nz)=phi_temp(:,:,:)
 
 end do
 
-filename2='data/SrO_on_LSCF/161024_A/SrO_on_LSCF_Conc_t200000_161024_A.dat'
+filename2='data/SrO_on_LSCF/161111_B/SrO_on_LSCF_Conc_t200000_161111_B.dat'
 write(*,*) filename2
 open(UNIT=2,FILE=filename2,STATUS='REPLACE',ACTION='READWRITE',form = 'unformatted')
-write(2)phi(:,:)
+write(2)phi(:,:,:)
 close(2)
 
 end

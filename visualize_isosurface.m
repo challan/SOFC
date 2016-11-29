@@ -2,14 +2,14 @@ function main
     clear all
     clc
 
-    time=[600,1200,1800];
-    char_len_t0=40.2619
-    char_len=[42.9265-char_len_t0,44.4255-char_len_t0,47.2212-char_len_t0];    
+    time=[20000,40000,60000,80000];
+    char_len=[73.023535,83.359538,90.626953,96.370599];    
     
-    plot(time.^(0.25),char_len,'-r','linewidth',3);    
+    plot(time.^(0.25),char_len,'-*r','linewidth',3);    
     set(gca,'fontsize',20,'linewidth',2.5,'fontweight','bold')    
     xlabel({'$t^{1/4}$'},'fontsize',25,'FontWeight','Bold','interpreter','latex')        
-    ylabel({'$S_v^{-1}$'},'fontsize',25,'FontWeight','Bold','interpreter','latex') 
+    ylabel({'$S_v^{-1}$'},'fontsize',25,'FontWeight','Bold','interpreter','latex')
+    title({'Cahn-Hilliard Equation with Variable Mobility'},'fontsize',25,'FontWeight','Bold','interpreter','latex')
     save2pdf('data/CH_SurfMob/jpg/Char_length_vs_time_plot.pdf')
     stop
     
@@ -18,12 +18,12 @@ function main
     ny=sizeArr(2);
     nz=sizeArr(3);
 
-    iter=60000    
+    iter=8000000    
     % Read the compressed microstructral data
-    fname = ['data/CH_SurfMob/CH_SurfMob_t%d_161017.dat'];
+    fname = ['data/CH_SurfMob/CH_SurfMob_t%d_256.dat'];
     fid = fopen(sprintf(fname,iter));
     skip = fread(fid,1,'int32');
-    a = fread(fid,nx*ny*nz,'double');
+    a = fread(fid,nx*ny*nz,'float');
     fclose(fid);
     Conc = reshape(a, [nx ny,nz]);
     clear a;    
@@ -46,7 +46,7 @@ function main
     zlabel({'Z-Coordinate'},'fontsize',30,'FontWeight','Bold','interpreter','latex') 
     title(sprintf('iter=%d',iter),'fontsize',30)    
     
-    filename='data/CH_SurfMob/jpg/CH_SurfMob_t%d_161017.jpg'
+    filename='data/CH_SurfMob/jpg/CH_SurfMob_t%d_256.jpg'
     saveas(gcf,sprintf(filename,iter))
 
     verts = get(p, 'Vertices');
@@ -56,7 +56,7 @@ function main
     c = cross(a, b, 2);
     area = 1/2 * sum(sqrt(sum(c.^2, 2)));
     char_len=1/(area/(nx*ny*nz))
-    fprintf('\nThe characteristic length is %f\n\n', char_len);
+    fprintf('\nThe characteristic length at iter=%d is %f\n\n',iter, char_len);
     
     
 

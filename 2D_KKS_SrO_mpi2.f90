@@ -25,7 +25,7 @@ INTEGER, PARAMETER :: DBL = SELECTED_REAL_KIND (p=13)      ! Double data kind
 !----------------------------------------------------------+
 
 INCLUDE 'mpif.h'
-INTEGER, PARAMETER :: d1 = 8, d2 = 8       ! partition number in each direction 
+INTEGER, PARAMETER :: d1 = 2, d2 = 4       ! partition number in each direction 
 INTEGER, PARAMETER :: bb = 1                       ! layers of ghost grid
 INTEGER, PARAMETER :: r1Tag=101,l1Tag=102,f1Tag=103,b1Tag=104    ! communicate tag
 
@@ -37,16 +37,16 @@ real(kind=8),parameter :: eps2=2.d0,W=4.d0
 ! Chemical and interfacial kinetic mobilities
 ! Al stands for the matrix alpha phase (LSCF)
 ! Bt stands for the beta precipitate phase (SrO)
-real(kind=8),parameter :: M_al=.1d0,M_bt=.1d0,L_phi=1.0d0
+real(kind=8),parameter :: M_al=.0044d0,M_bt=.1d0,L_phi=1.0d0
 ! Coefficients to the free-energy curves in the form of A1(c-Cm)^2+A0
 real(kind=8),parameter :: A1Al=.5d0, CmAl=0.d0, A0Al=0.0d0
 real(kind=8),parameter :: A1Bt=.5d0, CmBt=1.d0, A0Bt=0.0d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_md=100000, it_ed=200000, it_mod=100000
+integer,parameter        :: it_st=1, it_md=1000000, it_ed=100000, it_mod=100000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161028_B"
-character(len=100), parameter :: outdir="data/SrO_on_LSCF/161028_B/"
+character(len=10), parameter :: dates="161031_A"
+character(len=100), parameter :: outdir="data/SrO_on_LSCF/161031_A/"
 
 end module simulation
 !*********************************************************************

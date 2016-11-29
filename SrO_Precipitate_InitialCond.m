@@ -1,5 +1,5 @@
 function main
-    
+    iter=0;
     nx=2000;
     total_precipitates=100;% number of precipitates
     rng('shuffle');
@@ -16,11 +16,11 @@ function main
     
     %Introduce a sample precipitate in the center of the domain
     %Precipitate phase = 1, matrix phase =0
-    x=linspace(1,2000,nx);
+    x=linspace(1,nx,nx);
     [x_coord,y_coord]=meshgrid(x,x);    
     radius=10.0;
-    xcenter_ori=1000;
-    ycenter_ori=1000;
+    xcenter_ori=nx/2;
+    ycenter_ori=nx/2;
     delta=2.0;
     circle=sqrt((x_coord-xcenter_ori).^2+(y_coord-ycenter_ori).^2);
     phi_template=0.5*(1+tanh((radius-circle)/delta));
@@ -30,7 +30,7 @@ function main
 
     coords_no=1; % index for rand_coords array
     no_of_precipitates=2; % index for precipit_coords
-    while no_of_precipitates < 101
+    while no_of_precipitates < total_precipitates+1
         coords_no
         no_of_precipitates
         xcenter=rand_coords(1,coords_no);
@@ -73,20 +73,30 @@ function main
     caxis([0, 1])
     c = colorbar;
     ylabel(c, '$\phi$','fontsize',25,'FontWeight','Bold','interpreter','latex')    
-    axis([1 2000 1 2000 0 1]);
-    set(gca,'xtick',[1,500,1000,1500,2000],'ytick',[1,500,1000,1500,2000],'fontsize',25,'linewidth',2.5,'fontweight','bold')    
+    axis([1 nx 1 nx 0 1]);
+    set(gca,'xtick',[1,nx/4,nx/2,nx/4*3,nx],'ytick',[1,nx/4,nx/2,nx/4*3,nx],'fontsize',25,'linewidth',2.5,'fontweight','bold')    
     xlabel({'X-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex')
     ylabel({'Y-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex') 
     zlabel({'$\phi$'},'fontsize',30,'FontWeight','Bold','interpreter','latex') 
     title('SrO Precipitate Initial Condition','fontsize',30)    
+    az = 45;
+    el = 30;
+    view(az, el); 
+    
+    filename='data/SrO_on_LSCF/161019_D/jpg/Phi_Pot_Field_iter%d_CrossSecView.jpg'
+    saveas(gcf,sprintf(filename,iter))     
+    pause(2)
+    
     az = 0;
     el = 90;
     view(az, el); 
-    
+    filename='data/SrO_on_LSCF/161019_D/jpg/Phi_Pot_Field_iter%d_TopView.jpg'
+    saveas(gcf,sprintf(filename,iter))  
+
     
 
     % Write out the file
-    fname = ['data/SrO_on_LSCF_phi_t0_161017_Matlab.dat'];
+    fname = ['data/SrO_on_LSCF/161019_D/SrO_on_LSCF_phi_t0_161019_D_Matlab.dat'];
     fileID = fopen(fname,'wb');
     fwrite(fileID,phi,'double');
     fclose(fileID);

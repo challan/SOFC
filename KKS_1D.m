@@ -50,38 +50,38 @@ function main
     
     iter=0;
     make_plots(x_coord,phi,Conc,iter)
-    filename='160913_A/profiles_iter%d.pdf'
-    sprintf(filename,iter)
-    save2pdf(sprintf(filename,iter))
+%     filename='160913_A/profiles_iter%d.pdf'
+%     sprintf(filename,iter)
+%     save2pdf(sprintf(filename,iter))
     
 %    free_eg_curves(A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl) 
 %    free_eg_surface(W,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl)
 
-    for iter=1:60000
+    for iter=1:10000
         Conc=diff_iter(phi,Conc,D,dt,dx,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl);
         if mod(iter,10000) == 0
             make_plots(x_coord,phi,Conc,iter)
-            filename='160913_B/profiles_iter%d.pdf'
-            sprintf(filename,iter)
-            save2pdf(sprintf(filename,iter))
+            pause(1)
+%             filename='160913_B/profiles_iter%d.pdf'
+%             sprintf(filename,iter)
+%             save2pdf(sprintf(filename,iter))
         end
     end 
-    save('160913_B/Variables_Part1.mat')
-    load('160913_B/Variables_Part1.mat')   
-    for iter=60001:3000000
+    
+%    save('160913_B/Variables_Part1.mat')
+%    load('160913_B/Variables_Part1.mat')   
+    for iter=10001:10500
         Conc_old=Conc;
         phi_old=phi;
         Conc=diff_iter(phi_old,Conc_old,D,dt,dx,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl);
         phi=AC_iter(phi_old,Conc_old,dt,dx,M,W,eps2,A0Bt,A1Bt,CmBt,A0Al,A1Al,CmAl);
-        
-        if mod(iter,10000) == 0
+        if mod(iter,50) == 0
             make_plots(x_coord,phi,Conc,iter)
             filename='160913_B/profiles_iter%d.pdf'
             save2pdf(sprintf(filename,iter))
         end
-    end
-    
-    save('160913_A/Variables_Final.mat')
+    end   
+%     save('160913_A/Variables_Final.mat')
 end
 function ans=make_plots(x_coord,phi,Conc,iter)
     % Plot order-parameter and concentration field
@@ -90,7 +90,7 @@ function ans=make_plots(x_coord,phi,Conc,iter)
     hold on;
     plot(x_coord,Conc,'-r','linewidth',3);
 
-    axis([-100 100 0 1]);
+    axis([-100 100 -0.5 1]);
     set(gca,'xtick',[-100,-50,0,50,100],'fontsize',25,'linewidth',2.5,'fontweight','bold')
     ylabel({'Value of $\phi$ and $C$'},'fontsize',25,'FontWeight','Bold','interpreter','latex')
     xlabel({'X-Coordinate'},'fontsize',25,'FontWeight','Bold','interpreter','latex')
