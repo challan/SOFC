@@ -17,20 +17,20 @@ integer,parameter        :: nx=50, ny=50, nz=50
 ! Spatial and time-stepping sizes
 real(kind=dbl),parameter :: dt=.001d0,dx=1.d0,dy=1.d0,dz=1.d0
 ! Interfacial width controlling parameters
-real(kind=dbl),parameter :: eps2=2.d0,W=1.d0,CSr_ini=0.10d0
+real(kind=dbl),parameter :: eps2=2.d0,W=1.d0,CSr_ini=.16d0
 ! Chemical mobilities
 ! M_S is surface mobility of Sr 
 ! D_b is diffusion coefficient of Sr in the bulk LSCF and SrO
 ! Mobilities are different for different surfaces and bulk.
 real(kind=dbl),parameter :: M_s=0.1d0,M_b=.01d0
 !Equilibrium concentration of Sr and La in each phase
-real(kind=dbl),parameter :: CSr_s=.08d0, CSr_p=0.95d0, CSr_v=0.d0
+real(kind=dbl),parameter :: CSr_s=.08d0, CSr_p=0.9d0, CSr_v=0.d0
 real(kind=dbl),parameter :: CLa_s=.82d0, CLa_p=0.0d0, CLa_v=0.d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=50000, it_mod=10000
+integer,parameter        :: it_st=200001, it_ed=250000, it_mod=10000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161122_A"
+character(len=10), parameter :: dates="161130_A"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -49,10 +49,29 @@ integer:: iter,i,j,k
 !   	call initial_conds(C_Sr,C_La)
 ! 	call write_output(C_Sr,C_La,iter)
 
-	iter=10000
+	iter=it_st-1
 	call read_input(C_Sr,C_La,iter)
-	write(*, '(F10.7)') (C_Sr(25,25,i), i=1,40)
-	stop
+! 	iter=0
+! 	call read_input(C_Sr,C_La,iter)
+! 	write(*, '(F10.7)') (C_Sr(5,5,i), i=1,nz)
+! 
+! 	iter=50000
+! 	call read_input(C_Sr,C_La,iter)
+! 	write(*, '(F10.7)') (C_Sr(5,5,i), i=1,nz)
+! 	
+! 	iter=100000
+! 	call read_input(C_Sr,C_La,iter)
+! 	write(*, '(F10.7)') (C_Sr(5,5,i), i=1,nz)
+! 
+! 	iter=150000
+! 	call read_input(C_Sr,C_La,iter)
+! 	write(*, '(F10.7)') (C_Sr(5,5,i), i=1,nz)		
+! 	
+! 	iter=200000
+! 	call read_input(C_Sr,C_La,iter)
+! 	write(*, '(F10.7)') (C_Sr(5,5,i), i=1,nz)	
+! 	
+! 	stop
 	
 	!!Apply No-Flux BC for the concentration of substrate material (LaCoFeO3)	
 	call boundary_conds_3D(C_La)	
@@ -194,38 +213,64 @@ implicit none
 
 	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1,0:nz+1) :: C_Sr, C_La	
 	real(kind=DBL) :: circle, x_coord, y_coord, z_coord, radius, delta, xcenter, ycenter, zcenter
+	real(kind=DBL) :: CSr_Avg, CLa_Avg, W1, W2, a, b, d, df2_dc2
 	integer :: i,j,k
 	
 !Concentration in the substrate	
-	C_La(:,:,1:10)=CLa_s
-	C_Sr(:,:,1:10)=CSr_ini
-
-!Concentration in the vapor	
-	C_La(:,:,21:nz)=CLa_v
-	C_Sr(:,:,21:nz)=CSr_v
+	C_La(:,:,1:20)=CLa_s
+	C_Sr(:,:,1:20)=CSr_ini
 
 !Concentration in the particle
-	C_La(:,:,11:20)=CLa_p
-	C_Sr(:,:,11:20)=CSr_p
+! 	C_La(:,:,21:30)=CLa_p
+! 	C_Sr(:,:,21:30)=CSr_p
+
+!Concentration in the vapor	
+	C_La(:,:,31:nz)=CLa_v
+	C_Sr(:,:,31:nz)=CSr_v
 
 
 ! The particle sits on the substrate and has a hemispherical shape.
-! 	xcenter=real(nx/2,kind=dbl)
-! 	ycenter=real(ny/2,kind=dbl)
-! 	zcenter=real(nz/2,kind=dbl)
-! 	radius=5.d0
-! 	delta=1.d0
-! 	do k=11,nz
-! 	z_coord=real(k,kind=dbl)
-! 	do i=1,nx
-! 		x_coord=real(i,kind=dbl)
-! 		do j=1,ny
-! 			y_coord=real(j,kind=dbl)
-! 			circle=sqrt((x_coord-xcenter)**2+(y_coord-ycenter)**2+(z_coord-zcenter)**2)
-!     		C_Sr(i,j,k)=0.5d0*(1.d0+tanh((radius-circle)/delta))*CSr_p
-! 		enddo
-! 	enddo	
-! 	enddo
+	xcenter=real(nx/2,kind=dbl)
+	ycenter=real(ny/2,kind=dbl)
+	zcenter=real(21,kind=dbl)
+	radius=10.d0
+	delta=2.d0
+	do k=21,nz
+	z_coord=real(k,kind=dbl)
+	do i=1,nx
+		x_coord=real(i,kind=dbl)
+		do j=1,ny
+			y_coord=real(j,kind=dbl)
+			circle=sqrt((x_coord-xcenter)**2+(y_coord-ycenter)**2+(z_coord-zcenter)**2)
+    		C_Sr(i,j,k)=0.5d0*(1.d0+tanh((radius-circle)/delta))*CSr_p
+		enddo
+	enddo	
+	enddo
+
+
+!Overall concentrations	
+	CSr_Avg=sum(C_Sr(1:nx,1:ny,1:nz))/real(nx*ny*nz,kind=dbl)
+	CLa_Avg=sum(C_La(1:nx,1:ny,1:nz))/real(nx*ny*nz,kind=dbl)
+!Check to see if the system is in the spinodal region.
+	a=1/CSr_p
+	b=-1.d0*CSr_s/(CSr_p*CLa_s)
+	d=1/CLa_s
+	
+	W1=W
+	W2=W
+	
+!Second derivative of bulk free energy w.r.t. C_Sr
+! 	CLa_Avg=0.d0
+! 	CSr_Avg=0.5d0
+	write(*,*) 'Avg. conc of Sr and La are',CSr_Avg, CLa_Avg	
+	df2_dc2=2.0d0*W1*a**2.d0*(d*CLa_Avg)**2.d0 + 2.0d0*W2*a**2.d0*(a*CSr_Avg+b*CLa_Avg-1.d0)**2.d0 + &
+		 4.0d0*W2*a**2.d0*(a*CSr_Avg+b*CLa_Avg-1.d0)*(a*CSr_Avg+b*CLa_Avg) + &
+		 2.0d0*W2*a**2.d0*(a*CSr_Avg+b*CLa_Avg)**2.d0 + &
+		 4.0d0*W2*a**2.d0*(a*CSr_Avg+b*CLa_Avg)*(a*CSr_Avg+b*CLa_Avg-1.d0)
+
+	write(*,*) 'The second derivative of free. e.g. is ',df2_dc2
+
+
 	
 !Concentration of vacancy is 1-C_La-C_Sr
 		 	
@@ -243,8 +288,8 @@ implicit none
 
 	write(*,*) "Write Output at iter=",iter 
 	write(*,*) "Total Sr =",sum(C_Sr(1:nx,1:ny,1:nz)) 
-	write(*,*) "Total Sr in Substrate =",sum(C_Sr(1:nx,1:ny,1:10)) 
-	write(*,*) "Total Sr in Vapor =",sum(C_Sr(1:nx,1:ny,11:nz)) 			
+	write(*,*) "Total Sr in Substrate =",sum(C_Sr(1:nx,1:ny,1:20)) 
+	write(*,*) "Total Sr in Particle/Vapor =",sum(C_Sr(1:nx,1:ny,21:nz)) 			
 	write(*,*) "Maximum Value of Conc=", MAXVAL(C_Sr) 
 	write(*,*) "Minimum Value of Conc=", MINVAL(C_Sr) 	
 
@@ -342,11 +387,11 @@ implicit none
 	read(1) C_Sr(1:nx,1:ny,1:nz)
 	close(1)	
 ! 
-	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_C_La_t'//trim(iteration)//'_'//trim(dates)//'.dat'
-	write(*,*) filename
-	open(2,file=filename,form='unformatted',STATUS='old')
-	read(2) C_La(1:nx,1:ny,1:nz)
-	close(2)
+! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_C_La_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+! 	write(*,*) filename
+! 	open(2,file=filename,form='unformatted',STATUS='old')
+! 	read(2) C_La(1:nx,1:ny,1:nz)
+! 	close(2)
 
 	write(*,*) "Write Output at iter=",iter 
 	write(*,*) "Total Sr Conc. =",sum(C_Sr(1:nx,1:ny,1:nz)) 	
