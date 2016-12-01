@@ -17,7 +17,7 @@ integer,parameter        :: nx=50, ny=50, nz=50
 ! Spatial and time-stepping sizes
 real(kind=dbl),parameter :: dt=.001d0,dx=1.d0,dy=1.d0,dz=1.d0
 ! Interfacial width controlling parameters
-real(kind=dbl),parameter :: eps2=2.d0,W=1.d0,CSr_ini=.1d0
+real(kind=dbl),parameter :: eps2=2.d0,W=1.d0,CSr_ini=.6d0
 ! Chemical mobilities
 ! M_S is surface mobility of Sr 
 ! D_b is diffusion coefficient of Sr in the bulk LSCF and SrO
@@ -25,10 +25,10 @@ real(kind=dbl),parameter :: eps2=2.d0,W=1.d0,CSr_ini=.1d0
 real(kind=dbl),parameter :: M_s=0.1d0,M_b=.01d0
 !Equilibrium concentration of Sr and La in each phase
 real(kind=dbl),parameter :: CSr_s=.08d0, CSr_p=0.9d0, CSr_v=0.d0
-real(kind=dbl),parameter :: CLa_s=.82d0, CLa_p=0.0d0, CLa_v=0.d0
+real(kind=dbl),parameter :: CLa_s=.820, CLa_p=0.0d0, CLa_v=0.d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=100000, it_mod=10000
+integer,parameter        :: it_st=11, it_ed=300000, it_mod=50000
 character(len=100), parameter :: s = "SrO_on_LSCF"
 character(len=10), parameter :: dates="161201_B"
 
@@ -49,8 +49,8 @@ integer:: iter,i,j,k
   	call initial_conds(C_Sr,C_La)
 	call write_output(C_Sr,C_La,iter)
 
-	iter=it_st-1
-	call read_input(C_Sr,C_La,iter)
+! 	iter=it_st-1
+! 	call read_input(C_Sr,C_La,iter)
 ! 	iter=0
 ! 	call read_input(C_Sr,C_La,iter)
 ! 	write(*, '(F10.7)') (C_Sr(5,5,i), i=1,nz)
@@ -117,11 +117,6 @@ implicit none
 	
 	dfdc=2.0d0*W1*a*(a*C_Sr+b*C_La)*(d*C_La)**2.d0 + 2.0d0*W2*a*(a*C_Sr+b*C_La)*(a*C_Sr+b*C_La-1.d0)**2.d0 + &
 		 2.0d0*W2*a*(a*C_Sr+b*C_La)**2.d0*(a*C_Sr+b*C_La-1.d0)
-	
-! 	write(*,*) "Maximum Value of dfdc in Substrate=", MAXVAL(dfdc(:,:,1:10)) 
-! 	write(*,*) "Minimum Value of dfdc in Substrate=", MINVAL(dfdc(:,:,1:10))
-! 	write(*,*) "Maximum Value of dfdc in Vapor=", MAXVAL(dfdc(:,:,11:nz)) 
-! 	write(*,*) "Minimum Value of dfdc in Vapor=", MINVAL(dfdc(:,:,11:nz))	
 		 	
 	! While the order parameter is defined in 3D, the oxide only grows on the surface and therefore the Laplacian is evaluated in 2D (surface Laplacian)
 	forall(i=1:nx,j=1:ny,k=1:nz)
@@ -130,33 +125,8 @@ implicit none
   			     	 (C_Sr(i,j,k+1)+C_Sr(i,j,k-1)-2.d0*C_Sr(i,j,k))/(dz*dz)
    	end forall
 
-! 	write(*,*) "Maximum Value of lap3D in Substrate=", MAXVAL(lap3D(1:nx,1:ny,1:10)) 
-! 	write(*,*) "Minimum Value of lap3D in Substrate=", MINVAL(lap3D(1:nx,1:ny,1:10))
-
-! 	write(*,*) "Maximum Value of C_Sr in Bottom Substrate=", MAXVAL(C_Sr(:,:,1:10)) 
-! 	write(*,*) "Minimum Value of C_Sr in Bottom Substrate=", MINVAL(C_Sr(:,:,1:10))
-! 
-! 	write(*,*) "Maximum Value of lap3D in Bottom Substrate=", MAXVAL(lap3D(1:nx-1,1:ny,1:10)) 
-! 	write(*,*) "Minimum Value of lap3D in Bottom Substrate=", MINVAL(lap3D(1:nx-1,1:ny,1:10))
-
-! 	write(*,*) "Maximum Value of lap3D in Top Substrate=", MAXVAL(lap3D(1:nx,1:ny,10)) 
-! 	write(*,*) "Minimum Value of lap3D in Top Substrate=", MINVAL(lap3D(1:nx,1:ny,10))
-! 
-! 	write(*,*) "Maximum Value of lap3D in Vapor=", MAXVAL(lap3D(1:nx,1:ny,11:nz)) 
-! 	write(*,*) "Minimum Value of lap3D in Vapor=", MINVAL(lap3D(1:nx,1:ny,11:nz))	
-	
-!	call write(lap3D)
-	
-	
-
 	Pot=dfdc-eps2*lap3D
 
-!  	write(*,*) "Maximum Value of Pot in Top Substrate=", MAXVAL(Pot(1:nx,1:ny,10)) 
-!  	write(*,*) "Minimum Value of Pot in Top Substrate=", MINVAL(Pot(1:nx,1:ny,10))
-!  
-!  	write(*,*) "Maximum Value of Pot in Vapor=", MAXVAL(Pot(1:nx,1:ny,12)) 
-!  	write(*,*) "Minimum Value of Pot in Vapor=", MINVAL(Pot(1:nx,1:ny,12))	
-! 	stop
 		
 end subroutine
 !*********************************************************************
@@ -224,15 +194,15 @@ implicit none
 ! 	C_Sr(:,:,21:30)=CSr_p
 
 !Concentration in the vapor	
-	C_La(:,:,31:nz)=CLa_v
-	C_Sr(:,:,31:nz)=CSr_v
+	C_La(:,:,21:nz)=CLa_v
+	C_Sr(:,:,21:nz)=CSr_v
 
 
 ! The particle sits on the substrate and has a hemispherical shape.
 	xcenter=real(nx/2,kind=dbl)
 	ycenter=real(ny/2,kind=dbl)
 	zcenter=real(21,kind=dbl)
-	radius=5.d0
+	radius=10.d0
 	delta=2.d0
 	do k=21,nz
 	z_coord=real(k,kind=dbl)
@@ -392,7 +362,7 @@ implicit none
 ! 	read(2) C_La(1:nx,1:ny,1:nz)
 ! 	close(2)
 
-	write(*,*) "Write Output at iter=",iter 
+	write(*,*) "Read Input at iter=",iter 
 	write(*,*) "Total Sr Conc. =",sum(C_Sr(1:nx,1:ny,1:nz)) 	
 	write(*,*) "Maximum Value of Conc=", MAXVAL(C_Sr) 
 	write(*,*) "Minimum Value of Conc=", MINVAL(C_Sr) 	
