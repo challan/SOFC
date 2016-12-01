@@ -17,7 +17,7 @@ integer,parameter        :: nx=50, ny=50, nz=50
 ! Spatial and time-stepping sizes
 real(kind=dbl),parameter :: dt=.001d0,dx=1.d0,dy=1.d0,dz=1.d0
 ! Interfacial width controlling parameters
-real(kind=dbl),parameter :: eps2=2.d0,W=1.d0,CSr_ini=.16d0
+real(kind=dbl),parameter :: eps2=2.d0,W=1.d0,CSr_ini=.1d0
 ! Chemical mobilities
 ! M_S is surface mobility of Sr 
 ! D_b is diffusion coefficient of Sr in the bulk LSCF and SrO
@@ -28,9 +28,9 @@ real(kind=dbl),parameter :: CSr_s=.08d0, CSr_p=0.9d0, CSr_v=0.d0
 real(kind=dbl),parameter :: CLa_s=.82d0, CLa_p=0.0d0, CLa_v=0.d0
 
 ! I/O Variables
-integer,parameter        :: it_st=200001, it_ed=250000, it_mod=10000
+integer,parameter        :: it_st=1, it_ed=100000, it_mod=10000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161130_A"
+character(len=10), parameter :: dates="161201_B"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -45,9 +45,9 @@ real(kind=dbl), DIMENSION(0:nx+1,0:ny+1,0:nz+1) :: C_Sr,C_La, Pot
 real(kind=dbl):: tolerance, max_c, min_c, max_phi, min_phi
 integer:: iter,i,j,k
 
-! 	iter=0
-!   	call initial_conds(C_Sr,C_La)
-! 	call write_output(C_Sr,C_La,iter)
+	iter=0
+  	call initial_conds(C_Sr,C_La)
+	call write_output(C_Sr,C_La,iter)
 
 	iter=it_st-1
 	call read_input(C_Sr,C_La,iter)
@@ -112,9 +112,8 @@ implicit none
 	b=-1.d0*CSr_s/(CSr_p*CLa_s)
 	d=1/CLa_s
 	
-	W1=W
-	W2=W
-	W3=W
+	W1=0.1d0*W
+	W2=4.d0*W
 	
 	dfdc=2.0d0*W1*a*(a*C_Sr+b*C_La)*(d*C_La)**2.d0 + 2.0d0*W2*a*(a*C_Sr+b*C_La)*(a*C_Sr+b*C_La-1.d0)**2.d0 + &
 		 2.0d0*W2*a*(a*C_Sr+b*C_La)**2.d0*(a*C_Sr+b*C_La-1.d0)
@@ -233,7 +232,7 @@ implicit none
 	xcenter=real(nx/2,kind=dbl)
 	ycenter=real(ny/2,kind=dbl)
 	zcenter=real(21,kind=dbl)
-	radius=10.d0
+	radius=5.d0
 	delta=2.d0
 	do k=21,nz
 	z_coord=real(k,kind=dbl)
@@ -256,8 +255,8 @@ implicit none
 	b=-1.d0*CSr_s/(CSr_p*CLa_s)
 	d=1/CLa_s
 	
-	W1=W
-	W2=W
+	W1=0.1d0*W
+	W2=4.d0*W
 	
 !Second derivative of bulk free energy w.r.t. C_Sr
 ! 	CLa_Avg=0.d0
