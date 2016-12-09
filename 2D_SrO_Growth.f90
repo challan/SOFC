@@ -16,15 +16,15 @@ real(kind=8),parameter :: dt=.005d0,dx=1.d0,dy=1.d0
 ! Interfacial width controlling parameters
 real(kind=8),parameter :: eps2=4.0d0,W=8.0d0
 ! Coefficients to the free-energy curves in the form of A1(c-Cm)^2+A0
-real(kind=8),parameter :: A1Al=1.d0, CmAl=0.08d0, A0Al=0.0d0
+real(kind=8),parameter :: A1Al=1.d0, CmAl=0.8d0, A0Al=0.0d0
 real(kind=8),parameter :: A1Bt=1.d0, CmBt=.9d0, A0Bt=0.0d0
 !Equilibrium concentration of Sr in each phase
-real(kind=dbl),parameter :: CSr_s=.08d0, CSr_p=0.9d0, CSr_v=0.d0
+real(kind=dbl),parameter :: CSr_s=0.8d0, CSr_p=0.9d0, CSr_v=0.d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=10000, it_mod=10000
+integer,parameter        :: it_st=1, it_ed=400000, it_mod=50000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161207_A"
+character(len=10), parameter :: dates="161209_A"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -100,6 +100,9 @@ implicit none
 		endif		
 	enddo
 
+	write(*,*) 'concentrations'
+	write(*,*) Conc_Dom2(nx/2,ny/2),Conc_Dom2(nx/2,ny/2+1),Conc_Dom2(nx/2,ny/2+2)
+	write(*,*) Conc_Dom2(5,ny/2),Conc_Dom2(5,ny/2+1),Conc_Dom2(5,ny/2+2)
 end subroutine
 !*********************************************************************
 !*********************************************************************
@@ -165,9 +168,10 @@ implicit none
 		endif		
 	enddo
 
-! 	write(*,*) Pot_Dom1(nx/2,ny/2-1),Pot_Dom1(nx/2,ny/2),Pot_Dom1(nx/2,ny/2+1)
-! 	write(*,*) Pot_Dom2(nx/2,ny/2),Pot_Dom2(nx/2,ny/2+1),Pot_Dom2(nx/2,ny/2+2)
-! 	stop
+	write(*,*) 'potentials'
+	write(*,*) Pot_Dom2(nx/2,ny/2),Pot_Dom2(nx/2,ny/2+1),Pot_Dom2(nx/2,ny/2+2)
+	write(*,*) Pot_Dom2(5,ny/2),Pot_Dom2(5,ny/2+1),Pot_Dom2(5,ny/2+2)
+ 	stop
 	
 end subroutine
 !*********************************************************************
@@ -229,7 +233,7 @@ implicit none
 	radius=10.d0
 	delta=2.d0
 
-	do i=1,nx
+	do i=nx/2-15,nx/2+15
 		x_coord=real(i,kind=dbl)
 		do j=ny/2+1,ny
 			y_coord=real(j,kind=dbl)
@@ -240,7 +244,7 @@ implicit none
 
 	Conc_Dom1(:,1:ny/2)=Conc(:,1:ny/2)
 	Conc_Dom2(:,ny/2+1:ny)=Conc(:,ny/2+1:ny)	
-		 	
+
 end subroutine
 !*********************************************************************
 !********************************************************************* 	
@@ -261,7 +265,8 @@ implicit none
 	write(*,*) "Total Conc in Dom1=", sum(Conc_Dom1(1:nx,1:ny/2))	
  	write(*,*) "Maximum Value of Dom2=", MAXVAL(Conc_Dom2(1:nx,ny/2+1:ny)) 
 	write(*,*) "Minimum Value of Dom2=", MINVAL(Conc_Dom2(1:nx,ny/2+1:ny)) 
-	write(*,*) "Total Conc in Dom2=", sum(Conc_Dom2(1:nx,ny/2+1:ny))	
+	write(*,*) "Total Conc in Dom2=", sum(Conc_Dom2(1:nx,ny/2+1:ny))
+		
 	
 	if (iter < 10) then
 		format_string="(i1)"	
@@ -286,7 +291,8 @@ implicit none
 	Conc=0.0d0
 
  	Conc(:,1:ny/2)=Conc_Dom1(:,1:ny/2)
-	Conc(:,ny/2:ny)=Conc_Dom2(:,ny/2:ny)
+	Conc(:,ny/2+1:ny)=Conc_Dom2(:,ny/2+1:ny)
+	write(*,*) "Total Conc in Dom1+Dom2=", sum(Conc(1:nx,1:ny))
 	
 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
@@ -296,7 +302,7 @@ implicit none
 
 	Conc=0.0d0
  	Conc(:,1:ny/2)=Pot_Dom1(:,1:ny/2)
-	Conc(:,ny/2:ny)=Pot_Dom2(:,ny/2:ny)
+	Conc(:,ny/2+1:ny)=Pot_Dom2(:,ny/2+1:ny)
 
 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_ChemPot_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
