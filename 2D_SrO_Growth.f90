@@ -16,15 +16,15 @@ real(kind=8),parameter :: dt=.005d0,dx=1.d0,dy=1.d0
 ! Interfacial width controlling parameters
 real(kind=8),parameter :: eps2=4.0d0,W=8.0d0
 ! Coefficients to the free-energy curves in the form of A1(c-Cm)^2+A0
-real(kind=8),parameter :: A1Al=1.d0, CmAl=0.8d0, A0Al=0.0d0
+real(kind=8),parameter :: A1Al=1.d0, CmAl=0.08d0, A0Al=0.0d0
 real(kind=8),parameter :: A1Bt=1.d0, CmBt=.9d0, A0Bt=0.0d0
 !Equilibrium concentration of Sr in each phase
-real(kind=dbl),parameter :: CSr_s=0.8d0, CSr_p=0.9d0, CSr_v=0.d0
+real(kind=dbl),parameter :: CSr_s=0.08d0, CSr_p=0.9d0, CSr_v=0.d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=400000, it_mod=50000
+integer,parameter        :: it_st=1, it_md=10000, it_ed=100000, it_mod=20000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161209_A"
+character(len=10), parameter :: dates="161209_B"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -42,12 +42,15 @@ integer:: iter,i,j,k
 	iter=0
 	call initial_conds(phi_Dom1,Conc,Conc_Dom1,Conc_Dom2)
 	call write_output(Conc_Dom1,Conc_Dom2,Pot_Dom1,Pot_Dom2,iter)
-	
+
+do iter=it_st,it_md
+	call equilibrate_Conc_Dom1(Conc_Dom1, Pot_Dom1, phi_Dom1)
+enddo
+ write(*,*)	
 do iter=it_st,it_ed
-	!write(*,*) "iter =",iter
+
 	!!Apply No-Flux BC for the concentration of Sr.
 	call boundary_conds_conc(phi_Dom1,Conc_Dom1,Conc_Dom2)	
-
 	
 	!!Calculate chem. pot. for the concentration parameter
 	call calculate_potentials(phi_Dom1,Conc_Dom1,Conc_Dom2,Pot_Dom1,Pot_Dom2)
@@ -69,12 +72,50 @@ write(*,*) "!!!!!!!!!!!! END Iteration !!!!!!!!!!!!!!"
 end program
 !*********************************************************************
 !*********************************************************************
+subroutine equilibrate_Conc_Dom1(phi_Dom1,Conc_Dom1,Pot_Dom1,)
+use simulation
+implicit none
+! Impose periodic boundary conditions
+	real(kind=DBL), DIMENSION(0:nx+1,0:ny/2+1) :: Conc_Dom1, ConcBt, Pot_Dom1, phi_Dom1, Hfunc_Dom1, div_Dom1
+	integer :: i,j	
+
+	!!No-Flux BC 
+	Conc_Dom1(0,:)=Conc_Dom1(1,:)
+	Conc_Dom1(nx+1,:)=Conc_Dom1(nx,:)
+	Conc_Dom1(:,0)=Conc_Dom1(:,1)
+	Conc_Dom1(:,ny+1)=Conc_Dom1(:,ny)
+
+	!For Domain 1
+	! Monotonically increasing function	
+	Hfunc_Dom1=(phi_Dom1)*(3.0d0-2.d0*phi_Dom1)	
+	
+	! Auxillary beta phase composition
+	! Beta phase is the SrO phase that sits in the ghost layer (from domain 1)
+    ConcBt=A1Al*(Conc_Dom1-CmAl*(1.0d0-Hfunc_Dom1))+A1Bt*CmBt*(1.0d0-Hfunc_Dom1)
+    ConcBt=ConcBt/(A1Al*Hfunc_Dom1+A1Bt*(1-Hfunc_Dom1))
+
+	! Derivative of the Free-energy function for Alpha phase
+	Pot_Dom1=2.0d0*A1Bt*(ConcBt-CmBt)
+
+ 	Mob_Dom1=1.d0
+	
+	!For Domain 1
+	forall(i=1:nx,j=1:ny/2)
+    	div_Dom1(i,j)=((Mob_Dom1(i,j)+Mob_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Mob_Dom1(i,j)+Mob_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
+    			 ((Mob_Dom1(i,j)+Mob_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Mob_Dom1(i,j)+Mob_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy)
+   	end forall
+	Conc_Dom1=Conc_Dom1+dt*div_Dom1  	
+   	
+end subroutine	
+!*********************************************************************
+!*********************************************************************
 subroutine boundary_conds_conc(phi_Dom1,Conc_Dom1,Conc_Dom2)	
 use simulation
 implicit none
 ! Impose periodic boundary conditions
 	real(kind=DBL), DIMENSION(0:nx+1,0:ny/2+1) :: Conc_Dom1, phi_Dom1
 	real(kind=DBL), DIMENSION(0:nx+1,ny/2:ny+1) :: Conc_Dom2
+	real(kind=DBL) :: y_coord, ycenter, delta 
 	integer :: i,j	
 
 	!!No-Flux BC 
@@ -89,11 +130,16 @@ implicit none
 
 	! Check where the edge of the substrate meets the particle phase
 	! At the interface between the substrate and particle phase, set Conc_Dom1=Conc_Dom2.	
+	ycenter=real(ny/2-4,kind=dbl)
+	delta=2.d0
 	do i=1,nx
 		if (Conc_Dom2(i,ny/2+1) .gt. 0.5) then
 			Conc_Dom1(i,ny/2+1)=Conc_Dom2(i,ny/2+1)
 			Conc_Dom2(i,ny/2)=Conc_Dom1(i,ny/2)
-			phi_Dom1(i,ny/2+1)=1.d0
+			do j=ny/2-10,ny/2+1
+				y_coord=real(j,kind=dbl)
+				phi_Dom1(i,j)=0.5d0*(1.d0+tanh((y_coord-ycenter)/delta))
+			enddo
 		else
 		Conc_Dom1(i,ny/2+1)=Conc_Dom1(i,ny/2)	
 		Conc_Dom2(i,ny/2)=Conc_Dom2(i,ny/2+1)
@@ -110,15 +156,18 @@ subroutine calculate_potentials(phi_Dom1,Conc_Dom1,Conc_Dom2,Pot_Dom1,Pot_Dom2)
 use simulation
 implicit none
 ! Impose periodic boundary conditions
-	real(kind=DBL), DIMENSION(0:nx+1,0:ny/2+1) :: Conc_Dom1, ConcBt, Pot_Dom1, phi_Dom1
+	real(kind=DBL), DIMENSION(0:nx+1,0:ny/2+1) :: Conc_Dom1, ConcBt, Pot_Dom1, phi_Dom1, Hfunc_Dom1
 	real(kind=DBL), DIMENSION(0:nx+1,ny/2:ny+1) :: Conc_Dom2, Pot_Dom2, dgdc
 	integer :: i,j	
 	
 	!For Domain 1
+	! Monotonically increasing function	
+	Hfunc_Dom1=(phi_Dom1)*(3.0d0-2.d0*phi_Dom1)	
+	
 	! Auxillary beta phase composition
 	! Beta phase is the SrO phase that sits in the ghost layer (from domain 1)
-    ConcBt=A1Al*(Conc_Dom1-CmAl*(1.0d0-phi_Dom1))+A1Bt*CmBt*(1.0d0-phi_Dom1)
-    ConcBt=ConcBt/(A1Al*phi_Dom1+A1Bt*(1-phi_Dom1))
+    ConcBt=A1Al*(Conc_Dom1-CmAl*(1.0d0-Hfunc_Dom1))+A1Bt*CmBt*(1.0d0-Hfunc_Dom1)
+    ConcBt=ConcBt/(A1Al*Hfunc_Dom1+A1Bt*(1-Hfunc_Dom1))
 
 	! Derivative of the Free-energy function for Alpha phase
 	Pot_Dom1=2.0d0*A1Bt*(ConcBt-CmBt)
@@ -137,8 +186,6 @@ implicit none
  			+(Conc_Dom2(i,j+1)+Conc_Dom2(i,j-1)-2.d0*Conc_Dom2(i,j))/(dy*dy))
    	end forall
 	
-
-
 end subroutine
 !*********************************************************************
 !*********************************************************************
@@ -201,10 +248,7 @@ implicit none
     			 ((Mob_Dom2(i,j)+Mob_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Mob_Dom2(i,j)+Mob_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy)
    	end forall
 	Conc_Dom2=Conc_Dom2+dt*div_Dom2
-
-! 	write(*,*) div_Dom1(nx/2,ny/2-1),div_Dom1(nx/2,ny/2)
-! 	write(*,*) div_Dom2(nx/2,ny/2+1),div_Dom2(nx/2,ny/2+2)
-! 	stop   
+ 
 end subroutine
 !*********************************************************************
 !*********************************************************************
@@ -219,10 +263,7 @@ implicit none
 	integer :: i,j
 	
 !Concentration in the substrate	
-	Conc(:,1:ny/2)=CSr_s*1.2d0
-
-!Structural parameter in the substrate
-	phi_Dom1(:,:)=0.0d0
+	Conc(:,1:ny/2)=CSr_s*2.d0
 
 !Concentration in the vapor	
 	Conc(:,ny/2+1:ny)=CSr_v
@@ -244,6 +285,26 @@ implicit none
 
 	Conc_Dom1(:,1:ny/2)=Conc(:,1:ny/2)
 	Conc_Dom2(:,ny/2+1:ny)=Conc(:,ny/2+1:ny)	
+
+!Structural parameter in the substrate
+	phi_Dom1(:,:)=0.0d0
+
+	! Check where the edge of the substrate meets the particle phase
+	! At the interface between the substrate and particle phase, set Conc_Dom1=Conc_Dom2.	
+	ycenter=real(ny/2-2,kind=dbl)
+	delta=1.d0
+	do i=1,nx
+		if (Conc_Dom2(i,ny/2+1) .gt. 0.5) then
+			do j=ny/2-10,ny/2+1
+				y_coord=real(j,kind=dbl)
+				phi_Dom1(i,j)=0.5d0*(1.d0+tanh((y_coord-ycenter)/delta))
+			enddo
+		endif	
+	enddo
+
+	write(*,*) 'order parameter'
+ 	write(*,*) phi_Dom1(50,ny/2-20:ny/2+1)
+ 	
 
 end subroutine
 !*********************************************************************
