@@ -22,7 +22,7 @@ real(kind=8),parameter :: A1Bt=1.d0, CmBt=.9d0, A0Bt=0.0d0
 real(kind=dbl),parameter :: CSr_s=0.08d0, CSr_p=0.9d0, CSr_v=0.d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_md=5000, it_ed=300000, it_mod=100000
+integer,parameter        :: it_st=1, it_md=10000, it_ed=100000, it_mod=20000
 character(len=100), parameter :: s = "SrO_on_LSCF"
 character(len=10), parameter :: dates="161209_B"
 
@@ -51,7 +51,6 @@ call write_output(Conc_Dom1,Conc_Dom2,Pot_Dom1,Pot_Dom2,iter-1)
 
 
 do iter=it_md+1,it_ed
-
 	!!Apply No-Flux BC for the concentration of Sr.
 	call boundary_conds_conc(phi_Dom1,Conc_Dom1,Conc_Dom2)	
 	
@@ -180,7 +179,7 @@ implicit none
 
 	forall(i=1:nx,j=ny/2+1:ny/2+1)
  		Pot_Dom2(i,j)=dgdc(i,j)-eps2*((Conc_Dom2(i+1,j)+Conc_Dom2(i-1,j)-2.d0*Conc_Dom2(i,j))/(dx*dx)) &
- 			+0.01d0*eps2*((Conc_Dom2(i,j+1)+Conc_Dom2(i,j-1)-2.d0*Conc_Dom2(i,j))/(dy*dy))
+ 			-0.01d0*eps2*((Conc_Dom2(i,j+1)+Conc_Dom2(i,j-1)-2.d0*Conc_Dom2(i,j))/(dy*dy))
    	end forall
 	
 	forall(i=1:nx,j=ny/2+2:ny)
