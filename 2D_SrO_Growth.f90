@@ -22,7 +22,7 @@ real(kind=8),parameter :: A1Bt=1.d0, CmBt=.9d0, A0Bt=0.0d0
 real(kind=dbl),parameter :: CSr_s=0.08d0, CSr_p=0.9d0, CSr_v=0.d0
 
 ! I/O Variables
-integer,parameter        :: it_st=1, it_md=10000, it_ed=100000, it_mod=20000
+integer,parameter        :: it_st=1, it_md=5000, it_ed=300000, it_mod=100000
 character(len=100), parameter :: s = "SrO_on_LSCF"
 character(len=10), parameter :: dates="161209_B"
 
@@ -30,7 +30,7 @@ end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! Main Program
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-program KKS_2D
+program SrO_Growth_2D
 use simulation
 implicit none
 
@@ -44,10 +44,13 @@ integer:: iter,i,j,k
 	call write_output(Conc_Dom1,Conc_Dom2,Pot_Dom1,Pot_Dom2,iter)
 
 do iter=it_st,it_md
-	call equilibrate_Conc_Dom1(Conc_Dom1, Pot_Dom1, phi_Dom1)
+	call equilibrate_Conc_Dom1(Conc_Dom1,Pot_Dom1,phi_Dom1)
 enddo
- write(*,*)	
-do iter=it_st,it_ed
+
+call write_output(Conc_Dom1,Conc_Dom2,Pot_Dom1,Pot_Dom2,iter-1)
+
+
+do iter=it_md+1,it_ed
 
 	!!Apply No-Flux BC for the concentration of Sr.
 	call boundary_conds_conc(phi_Dom1,Conc_Dom1,Conc_Dom2)	
@@ -72,22 +75,22 @@ write(*,*) "!!!!!!!!!!!! END Iteration !!!!!!!!!!!!!!"
 end program
 !*********************************************************************
 !*********************************************************************
-subroutine equilibrate_Conc_Dom1(phi_Dom1,Conc_Dom1,Pot_Dom1,)
+subroutine equilibrate_Conc_Dom1(Conc_Dom1,Pot_Dom1,phi_Dom1)
 use simulation
 implicit none
 ! Impose periodic boundary conditions
-	real(kind=DBL), DIMENSION(0:nx+1,0:ny/2+1) :: Conc_Dom1, ConcBt, Pot_Dom1, phi_Dom1, Hfunc_Dom1, div_Dom1
+	real(kind=DBL), DIMENSION(0:nx+1,0:ny/2+1) :: Conc_Dom1, ConcBt, Pot_Dom1, phi_Dom1, Hfunc_Dom1, div_Dom1, Mob_Dom1
 	integer :: i,j	
 
 	!!No-Flux BC 
 	Conc_Dom1(0,:)=Conc_Dom1(1,:)
 	Conc_Dom1(nx+1,:)=Conc_Dom1(nx,:)
 	Conc_Dom1(:,0)=Conc_Dom1(:,1)
-	Conc_Dom1(:,ny+1)=Conc_Dom1(:,ny)
+	Conc_Dom1(:,ny/2+1)=Conc_Dom1(:,ny/2)
 
-	!For Domain 1
+	! For Domain 1
 	! Monotonically increasing function	
-	Hfunc_Dom1=(phi_Dom1)*(3.0d0-2.d0*phi_Dom1)	
+	Hfunc_Dom1=(phi_Dom1**2.d0)*(3.0d0-2.d0*phi_Dom1)
 	
 	! Auxillary beta phase composition
 	! Beta phase is the SrO phase that sits in the ghost layer (from domain 1)
@@ -98,7 +101,6 @@ implicit none
 	Pot_Dom1=2.0d0*A1Bt*(ConcBt-CmBt)
 
  	Mob_Dom1=1.d0
-	
 	!For Domain 1
 	forall(i=1:nx,j=1:ny/2)
     	div_Dom1(i,j)=((Mob_Dom1(i,j)+Mob_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Mob_Dom1(i,j)+Mob_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
@@ -146,9 +148,9 @@ implicit none
 		endif		
 	enddo
 
-	write(*,*) 'concentrations'
-	write(*,*) Conc_Dom2(nx/2,ny/2),Conc_Dom2(nx/2,ny/2+1),Conc_Dom2(nx/2,ny/2+2)
-	write(*,*) Conc_Dom2(5,ny/2),Conc_Dom2(5,ny/2+1),Conc_Dom2(5,ny/2+2)
+! 	write(*,*) 'concentrations'
+! 	write(*,*) Conc_Dom2(nx/2,ny/2),Conc_Dom2(nx/2,ny/2+1),Conc_Dom2(nx/2,ny/2+2)
+! 	write(*,*) Conc_Dom2(5,ny/2),Conc_Dom2(5,ny/2+1),Conc_Dom2(5,ny/2+2)
 end subroutine
 !*********************************************************************
 !*********************************************************************
@@ -162,7 +164,7 @@ implicit none
 	
 	!For Domain 1
 	! Monotonically increasing function	
-	Hfunc_Dom1=(phi_Dom1)*(3.0d0-2.d0*phi_Dom1)	
+	Hfunc_Dom1=(phi_Dom1**2.d0)*(3.0d0-2.d0*phi_Dom1)
 	
 	! Auxillary beta phase composition
 	! Beta phase is the SrO phase that sits in the ghost layer (from domain 1)
@@ -215,10 +217,10 @@ implicit none
 		endif		
 	enddo
 
-	write(*,*) 'potentials'
-	write(*,*) Pot_Dom2(nx/2,ny/2),Pot_Dom2(nx/2,ny/2+1),Pot_Dom2(nx/2,ny/2+2)
-	write(*,*) Pot_Dom2(5,ny/2),Pot_Dom2(5,ny/2+1),Pot_Dom2(5,ny/2+2)
- 	stop
+! 	write(*,*) 'potentials'
+! 	write(*,*) Pot_Dom2(nx/2,ny/2),Pot_Dom2(nx/2,ny/2+1),Pot_Dom2(nx/2,ny/2+2)
+! 	write(*,*) Pot_Dom2(5,ny/2),Pot_Dom2(5,ny/2+1),Pot_Dom2(5,ny/2+2)
+!  	stop
 	
 end subroutine
 !*********************************************************************
@@ -302,8 +304,11 @@ implicit none
 		endif	
 	enddo
 
-	write(*,*) 'order parameter'
- 	write(*,*) phi_Dom1(50,ny/2-20:ny/2+1)
+
+
+
+! 	write(*,*) 'order parameter'
+!  	write(*,*) phi_Dom1(50,ny/2-10:ny/2+1)
  	
 
 end subroutine
@@ -449,8 +454,6 @@ implicit none
 	open(1,file=filename,form='unformatted',STATUS='old')!,ACCESS="STREAM")
 	read(1) phi(1:nx,1:ny)
 	close(1)	
-
-
 
 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	open(2,file=filename,form='unformatted',STATUS='old')
