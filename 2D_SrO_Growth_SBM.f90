@@ -200,8 +200,8 @@ implicit none
     	if (dotprod_Dom2 .gt. 0.09d0) then
     		div_Dom2(i,j)=Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
     			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy)) - &
-    			 mag_grad_Psi_Dom2*Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
-    			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy))			 
+    			 mag_grad_Psi_Dom2*Mob_Dom2*((Psi_Dom2(i+1,j)-Psi_Dom2(i-1,j))/(2.d0*dx)*(Pot_Dom2(i+1,j)-Pot_Dom2(i-1,j))/(2.d0*dx) + &
+    			(Psi_Dom2(i,j+1)-Psi_Dom2(i,j-1))/(2.d0*dy)*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j-1))/(2.d0*dy))  						 		 
     	else
     		div_Dom2(i,j)=Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
     			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy))	
