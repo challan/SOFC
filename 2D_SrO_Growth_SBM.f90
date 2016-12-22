@@ -21,9 +21,9 @@ real(kind=dbl),parameter :: CSr_s=0.08d0, CSr_p=0.9d0, CSr_v=0.d0
 !Contact angle of the particle on the substrate
 real(kind=dbl),parameter :: angle=70.d0
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=50000, it_mod=10000
+integer,parameter        :: it_st=1, it_ed=500000, it_mod=100000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161221_A"
+character(len=10), parameter :: dates="161222_B"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -40,12 +40,11 @@ integer:: iter,i,j,interface_width
 	call initial_conds(Conc,Psi_Dom1,Psi_Dom2)
 	Conc_Dom1=Conc
 	Conc_Dom2=Conc
-
- 	Conc=Conc_Dom1*Psi_Dom1+Conc_Dom2*Psi_Dom2
-	call write_output(Conc,Psi_Dom1,Psi_Dom2,Pot,iter,interface_width)
+	call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot,iter,interface_width)
 ! 
 ! 	iter=50000
-! 	call read_input(Conc,Pot,iter)
+! 	call read_input(Conc_Dom1,Conc_Dom2,iter)
+	
 
 do iter=it_st+1,it_ed
 			
@@ -62,10 +61,9 @@ do iter=it_st+1,it_ed
 	call Iterations(Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2,interface_width)
 		
 	if (mod(iter,it_mod) .eq. 0) then
-	
- 		Conc=Conc_Dom1*Psi_Dom1+Conc_Dom2*Psi_Dom2
-		Pot=Pot_Dom2*Psi_Dom2!+Pot_Dom2*Psi_Dom2		
-		call write_output(Conc,Pot,iter,,interface_width)
+	 	Conc=Conc_Dom1*Psi_Dom1+Conc_Dom2*Psi_Dom2
+		Pot=Pot_Dom2*Psi_Dom2!+Pot_Dom2*Psi_Dom2
+		call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot,iter,interface_width)
 	endif
 
 enddo
@@ -120,8 +118,6 @@ implicit none
     			 ((Psi_Dom2(i+1,j)-Psi_Dom2(i-1,j)/(2.d0*dx))**2.d0+(Psi_Dom2(i,j+1)-Psi_Dom2(i,j-1)/(2.d0*dy))**2.d0)**0.5d0*(eps2*2.d0*free_eg_Dom2(i,j))**0.5d0*(cos(angle*pi/180.d0))/(Psi_Dom2(i,j)+eta)
    	end forall
 	
-! 	write(*,*) cos(angle*pi/180.d0), ((Psi_Dom2(42,55)-Psi_Dom2(40,55)/(2.d0*dx))**2.d0+(Psi_Dom2(41,55+1)-Psi_Dom2(41,55-1)/(2.d0*dy))**2.d0)**0.5d0*(eps2*2.d0*free_eg_Dom2(41,55))**0.5d0*(cos(angle*pi/180.d0))/(Psi_Dom2(41,55)+eta)
-! 	stop
 end subroutine
 !*********************************************************************
 !*********************************************************************
@@ -150,7 +146,7 @@ subroutine Iterations(Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2,in
 use simulation
 implicit none
 ! Impose periodic boundary conditions
-	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Pot,Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2,div_Dom1,div_Dom2
+	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2,div_Dom1,div_Dom2
 	real(kind=DBL) :: Mob_Dom1, Mob_Dom2, dotprod_Dom1, dotprod_Dom2, mag_grad_Psi_Dom1, mag_grad_Psi_Dom2 
 	integer :: i,j,interface_width, icenter
 	
@@ -158,8 +154,6 @@ implicit none
 	Mob_Dom2=1.d0
 	interface_width=0
 	icenter=51
-	Pot(:,:)=0.0d0
-	Pot=Pot_Dom1*Psi_Dom1+Pot_Dom2*Psi_Dom2
 	
 	do i=1,nx
 	do j=1,ny
@@ -176,33 +170,30 @@ implicit none
 
 		! For Domain 1. Substrate/particle interface is defined as grad Psi_Dom1 dot grad Conc_Dom1 < 0
 		! For Domain 2. Substrate/particle interface is defined as grad Psi_Dom2 dot grad Conc_Dom2 > 0
-    	if (dotprod_Dom1 .lt. -0.09d0 .and. dotprod_Dom2 .gt. 0.09d0 ) then
-!     	if (abs(i-icenter) .le. 10 .and. j .eq. 51 ) then
+     	if (mag_grad_Psi_Dom2 .gt. 0.3d0 .and. Conc_Dom2(i,j) .gt. 0.5d0 ) then
+!    	if (abs(i-icenter) .le. 10 .and. j .eq. 51 ) then
     		interface_width=interface_width+1
-    		!write(*,*) i,j,count_Dom1
+!     		write(*,*)i,j
     		div_Dom1(i,j)=Mob_Dom1*(((Psi_Dom1(i,j)+Psi_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
     			 ((Psi_Dom1(i,j)+Psi_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy)) - & 
-    			 (1.d0)     			 
+     			 mag_grad_Psi_Dom1*Mob_Dom1*(Pot_Dom1(i,j)-Pot_Dom2(i,j))       			 
     		div_Dom2(i,j)=Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
     			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy)) - &
-    			 (-1.d0)    			  			
-						 
+     			 mag_grad_Psi_Dom2*Mob_Dom2*(Pot_Dom2(i,j)-Pot_Dom1(i,j))  	    			  								 
     	else
     		div_Dom1(i,j)=Mob_Dom1*(((Psi_Dom1(i,j)+Psi_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
     			 ((Psi_Dom1(i,j)+Psi_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy))
     		div_Dom2(i,j)=Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
     			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy))	
-		endif
-    	    	
-!     			 mag_grad_Psi_Dom1*Mob_Dom1*((Psi_Dom1(i+1,j)-Psi_Dom1(i-1,j))/(2.d0*dx)*(Pot_Dom1(i+1,j)-Pot_Dom1(i-1,j))/(2.d0*dx) + &
-!     			(Psi_Dom1(i,j+1)-Psi_Dom1(i,j-1))/(2.d0*dy)*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j-1))/(2.d0*dy))  
-!     			 mag_grad_Psi_Dom2*Mob_Dom2*((Psi_Dom2(i+1,j)-Psi_Dom2(i-1,j))/(2.d0*dx)*(Pot_Dom2(i+1,j)-Pot_Dom2(i-1,j))/(2.d0*dx) + &
-!     			(Psi_Dom2(i,j+1)-Psi_Dom2(i,j-1))/(2.d0*dy)*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j-1))/(2.d0*dy))  						 		 
-    	
+		endif  	
    	enddo
    	enddo
-   	
-   	 
+!    	write(*,*) 'interface width = ',interface_width
+!    	stop
+!      			 mag_grad_Psi_Dom1*Mob_Dom1*((Psi_Dom1(i+1,j)-Psi_Dom1(i-1,j))/(2.d0*dx)*(Pot_Dom1(i+1,j)-Pot_Dom1(i-1,j))/(2.d0*dx) + &
+!       			(Psi_Dom1(i,j+1)-Psi_Dom1(i,j-1))/(2.d0*dy)*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j-1))/(2.d0*dy))  
+!      			 mag_grad_Psi_Dom2*Mob_Dom2*((Psi_Dom2(i+1,j)-Psi_Dom2(i-1,j))/(2.d0*dx)*(Pot_Dom2(i+1,j)-Pot_Dom2(i-1,j))/(2.d0*dx) + &
+!      			(Psi_Dom2(i,j+1)-Psi_Dom2(i,j-1))/(2.d0*dy)*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j-1))/(2.d0*dy))  	   	 
    		
 	!Iteration in Domain 1
 	Conc_Dom1=Conc_Dom1+dt*div_Dom1/(Psi_Dom1+eta)
@@ -223,7 +214,7 @@ implicit none
 	integer :: i,j
 	
 !Concentration in the substrate	
-	Conc(:,1:ny/2)=CSr_s*2.d0
+	Conc(:,1:ny/2)=CSr_s*1.1d0
 
 !Concentration in the vapor	
 	Conc(:,ny/2+1:ny)=CSr_v
@@ -256,21 +247,18 @@ implicit none
 	
 	Psi_Dom2=1.0d0-Psi_Dom1
 
-! 	do j=1,ny
-! 		write(*,*) Conc(50,j)
-! 	enddo
-! 	stop
 end subroutine
 !*********************************************************************
 !********************************************************************* 	
-subroutine write_output(Conc,Pot,iter,interface_width)
+subroutine write_output(Conc_Dom1,Conc_Dom2,Conc,Pot,iter,interface_width)
 use simulation
 implicit none
-	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc,Pot
+	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc_Dom1,Conc_Dom2,Conc,Pot
 	INTEGER :: iter,interface_width
 	CHARACTER(LEN=100) :: filename
 	CHARACTER(LEN=10) :: iteration
 	CHARACTER(LEN=4) :: format_string	
+
 	
 	write(*,*) "Write Output at iter=",iter 
 	write(*,*) "Interface Width = ", interface_width	
@@ -280,8 +268,8 @@ implicit none
  	write(*,*) "Maximum Value of Dom2=", MAXVAL(Conc(1:nx,ny/2+1:ny)) 
 	write(*,*) "Minimum Value of Dom2=", MINVAL(Conc(1:nx,ny/2+1:ny)) 
 	write(*,*) "Total Conc in Dom2=", sum(Conc(1:nx,ny/2+1:ny))
+	write(*,*) "Total Conc in Dom1+Dom2=", sum(Conc(1:nx,1:ny))
 		
-	
 	if (iter < 10) then
 		format_string="(i1)"	
 	elseif (iter < 100) then
@@ -302,13 +290,23 @@ implicit none
 	
 	write(iteration,format_string)iter	
 
-	write(*,*) "Total Conc in Dom1+Dom2=", sum(Conc(1:nx,1:ny))
-	
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_Dom1_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(1) Conc_Dom1(1:nx,1:ny)
+	close(1)	
+
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_Dom2_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(1) Conc_Dom2(1:nx,1:ny)
+	close(1)
+
 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
 	write(1) Conc(1:nx,1:ny)
-	close(1)	
+	close(1)
 
 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_ChemPot_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
@@ -319,10 +317,10 @@ implicit none
 end subroutine
 !*********************************************************************
 !********************************************************************* 	
-subroutine read_input(Conc,Pot,iter)
+subroutine read_input(Conc_Dom1,Conc_Dom2,iter)
 use simulation
 implicit none
-	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc,Pot
+	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc_Dom1,Conc_Dom2
 	INTEGER :: iter
 	CHARACTER(LEN=100) :: filename
 	CHARACTER(LEN=10) :: iteration
@@ -348,26 +346,16 @@ implicit none
 	
 	write(iteration,format_string)iter	
 
-	write(*,*) "Total Conc in Dom1+Dom2=", sum(Conc(1:nx,1:ny))
-	
-	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_Dom1_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='old')
-	read(1) Conc(1:nx,1:ny)
-	close(1)	
-
-	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_ChemPot_t'//trim(iteration)//'_'//trim(dates)//'.dat'
-	write(*,*) filename
-	open(1,file=filename,form='unformatted',STATUS='old')
-	read(1) Pot(1:nx,1:ny)
+	read(1) Conc_Dom1(1:nx,1:ny)
 	close(1)
-
-	write(*,*) "Write Output at iter=",iter 
-	write(*,*) "Maximum Value of Dom1=", MAXVAL(Conc(1:nx,1:ny/2)) 
-	write(*,*) "Minimum Value of Dom1=", MINVAL(Conc(1:nx,1:ny/2))
-	write(*,*) "Total Conc in Dom1=", sum(Conc(1:nx,1:ny/2))	
- 	write(*,*) "Maximum Value of Dom2=", MAXVAL(Conc(1:nx,ny/2+1:ny)) 
-	write(*,*) "Minimum Value of Dom2=", MINVAL(Conc(1:nx,ny/2+1:ny)) 
-	write(*,*) "Total Conc in Dom2=", sum(Conc(1:nx,ny/2+1:ny))
+	
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_Dom2_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(1,file=filename,form='unformatted',STATUS='old')
+	read(1) Conc_Dom2(1:nx,1:ny)
+	close(1)	
 
 end subroutine
