@@ -21,9 +21,9 @@ real(kind=dbl),parameter :: CSr_s=0.08d0, CSr_p=0.9d0, CSr_v=0.d0
 !Contact angle of the particle on the substrate
 real(kind=dbl),parameter :: angle=70.d0
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=50000, it_mod=10000
+integer,parameter        :: it_st=5000000, it_ed=50000000, it_mod=5000000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="161223_A"
+character(len=10), parameter :: dates="161222_C"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -38,12 +38,12 @@ integer:: iter,i,j,interface_width
 
  	iter=0
  	call initial_conds(Conc,Psi_Dom1,Psi_Dom2)
-	Conc_Dom1=Conc
-	Conc_Dom2=Conc
-	call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot,iter,interface_width)
+! 	Conc_Dom1=Conc
+! 	Conc_Dom2=Conc
+! 	call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot,iter,interface_width)
 
-! 	iter=5000000
-! 	call read_input(Conc_Dom1,Conc_Dom2,iter)
+	iter=it_st
+	call read_input(Conc_Dom1,Conc_Dom2,iter)
 
 do iter=it_st+1,it_ed
 			
@@ -180,7 +180,7 @@ implicit none
      	if (mag_grad_Psi_Dom2 .gt. 0.3d0 .and. Conc_Dom2(i,j) .gt. 0.5d0 ) then
 !    	if (abs(i-icenter) .le. 10 .and. j .eq. 51 ) then
     		interface_width=interface_width+1
-     		!write(*,*)i,j,Pot_Dom1(i,j)-Pot_Dom2(i,j)
+!      		write(*,*)i,j,Pot_Dom1(i,j)-Pot_Dom2(i,j)
     		div_Dom1(i,j)=Mob_Dom1*(((Psi_Dom1(i,j)+Psi_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
     			 ((Psi_Dom1(i,j)+Psi_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy)) - & 
      			 mag_grad_Psi_Dom1*Mob_Dom1*(Pot_Dom1(i,j)-Pot_Dom2(i,j))       			 
@@ -197,7 +197,7 @@ implicit none
    	enddo
 !    	write(*,*) 'interface width = ',interface_width
 !    	stop
-   		
+!    		
 	!Iteration in Domain 1
 	Conc_Dom1=Conc_Dom1+dt*div_Dom1/(Psi_Dom1+eta)
 	
