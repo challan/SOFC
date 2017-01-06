@@ -21,9 +21,9 @@ real(kind=dbl),parameter :: CSr_s=0.08d0, CSr_p=0.9d0, CSr_v=0.d0
 !Contact angle of the particle on the substrate
 real(kind=dbl),parameter :: angle=70.d0
 ! I/O Variables
-integer,parameter        :: it_st=10000000, it_ed=10000000, it_mod=2000000
+integer,parameter        :: it_st=1, it_ed=10000, it_mod=2000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="170104_A"
+character(len=10), parameter :: dates="170105_A"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -38,19 +38,26 @@ integer:: iter,i,j,interface_width
 
   	iter=0
   	call initial_conds(Conc,Psi_Dom1,Psi_Dom2)
-! 	Conc_Dom1=Conc
-! 	Conc_Dom2=Conc
-!   	call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot,iter,interface_width)
+	Conc_Dom1=Conc
+	Conc_Dom2=Conc
+	
+	!!Apply No-Flux BC for the concentration of Sr.
+	call boundary_conds_conc(Conc_Dom1,Conc_Dom2)	
+	
+	!!Calculate chem. pot. for the concentration parameter
+	call calculate_potentials(Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2)	
+	
+  	call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot_Dom1,Pot_Dom2,Pot,iter)
 
-	iter=0
-	call read_input(Conc_Dom1,Conc_Dom2,iter)
- 	Conc=Conc_Dom1*Psi_Dom1+Conc_Dom2*Psi_Dom2
-	do j=1,ny
-		write(*,*) Conc(51,j)
-	enddo
-	stop
-10000	
-do iter=it_st+1,it_ed
+! 	iter=0
+! 	call read_input(Conc_Dom1,Conc_Dom2,iter)
+!  	Conc=Conc_Dom1*Psi_Dom1+Conc_Dom2*Psi_Dom2
+! 	do j=1,ny
+! 		write(*,*) Conc(51,j)
+! 	enddo
+! 	stop
+	
+do iter=it_st,it_ed
 
 	!!Apply No-Flux BC for the concentration of Sr.
 	call boundary_conds_conc(Conc_Dom1,Conc_Dom2)	
@@ -67,12 +74,11 @@ do iter=it_st+1,it_ed
  	if (mod(iter,it_mod) .eq. 0) then
 	 	Conc=Conc_Dom1*Psi_Dom1+Conc_Dom2*Psi_Dom2
 		Pot=Pot_Dom1*Psi_Dom1+Pot_Dom2*Psi_Dom2
-		call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot,iter,interface_width)
+		call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot_Dom1,Pot_Dom2,Pot,iter)
 		write(*,*) '=============================='
 		write(*,*) 'Iteration = ',iter	
-		write(*,*) Conc_Dom1(51,1)	
-		write(*,*) Conc_Dom1(51,51),Conc_Dom2(51,51)
-		write(*,*) Pot_Dom1(51,51),Pot_Dom2(51,51)
+		write(*,*) Conc_Dom1(51,1),Conc_Dom1(51,51)
+		write(*,*) Conc_Dom2(51,1),Conc_Dom2(51,51)				
 		write(*,*) '=============================='
 	endif
 
@@ -180,12 +186,21 @@ implicit none
 		! For Domain 1. Substrate/particle interface is defined as grad Psi_Dom1 dot grad Conc_Dom1 < 0
 		! For Domain 2. Substrate/particle interface is defined as grad Psi_Dom2 dot grad Conc_Dom2 > 0
 
-    	div_Dom1(i,j)=Mob_Dom1*(((Psi_Dom1(i,j)+Psi_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
-    		 ((Psi_Dom1(i,j)+Psi_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy)) - & 
-     		 mag_grad_Psi_Dom1*Mob_Dom1*(Pot_Dom1(i,j)-Pot_Dom2(i,j))*(Conc_Dom1(i,j)-CmAl)*Conc_Dom2(i,j)   			 
-    	div_Dom2(i,j)=Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
-    		 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy)) - &
-     		 mag_grad_Psi_Dom2*Mob_Dom2*(Pot_Dom2(i,j)-Pot_Dom1(i,j))*(Conc_Dom1(i,j)-CmAl)*Conc_Dom2(i,j)  	    			  								 
+     	if (mag_grad_Psi_Dom2 .gt. 0.3d0 .and. Conc_Dom2(i,j) .gt. 0.5d0 ) then
+    		interface_width=interface_width+1
+    		
+    		div_Dom1(i,j)=Mob_Dom1*(((Psi_Dom1(i,j)+Psi_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
+    			 ((Psi_Dom1(i,j)+Psi_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy)) - & 
+     			 mag_grad_Psi_Dom1*Mob_Dom1*(Pot_Dom1(i,j)-Pot_Dom2(i,j))       			 
+    		div_Dom2(i,j)=Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
+    			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy)) - &
+     			 mag_grad_Psi_Dom2*Mob_Dom2*(Pot_Dom2(i,j)-Pot_Dom1(i,j))  	    			  								 
+    	else
+    		div_Dom1(i,j)=Mob_Dom1*(((Psi_Dom1(i,j)+Psi_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
+    			 ((Psi_Dom1(i,j)+Psi_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy))
+    		div_Dom2(i,j)=Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
+    			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy))	
+		endif      			  								 
 
    	enddo
    	enddo
@@ -204,11 +219,14 @@ use simulation
 implicit none
 
 	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc, Psi_Dom1, Psi_Dom2
-	real(kind=DBL) :: xcenter, ycenter, radius, delta, circle, x_coord, y_coord
+	real(kind=DBL) :: xcenter, ycenter, radius, delta, circle, x_coord, y_coord, mag_grad
 	integer :: i,j
-	
+	CHARACTER(LEN=100) :: filename
+	CHARACTER(LEN=10) :: iteration
+	CHARACTER(LEN=4) :: format_string	
+			
 !Concentration in the substrate	
-	Conc(:,1:ny/2)=CSr_s*1.05d0
+	Conc(:,1:ny/2)=CSr_s*1.0d0
 
 !Concentration in the vapor	
 	Conc(:,ny/2+1:ny)=CSr_v
@@ -247,14 +265,28 @@ implicit none
 	
 	Psi_Dom2=1.0d0-Psi_Dom1
 
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Psi_Dom2_'//trim(dates)//'.dat'
+	write(*,*) filename
+	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+	write(1) Psi_Dom2(1:nx,1:ny)
+	close(1)	
 
+! 	do i=1,nx
+! 		mag_grad=abs((Psi_Dom2(51,i+1)-Psi_Dom2(51,i-1))/(2.d0*dx))
+! 		if (mag_grad .gt. 1.d-2) then 
+! 			write(*,*) i, mag_grad
+! 		endif
+! 		mag_grad=0.d0
+! 	enddo
+! 
+! 	stop
 end subroutine
 !*********************************************************************
 !********************************************************************* 	
-subroutine write_output(Conc_Dom1,Conc_Dom2,Conc,Pot,iter,interface_width)
+subroutine write_output(Conc_Dom1,Conc_Dom2,Conc,Pot_Dom1,Pot_Dom2,Pot,iter)
 use simulation
 implicit none
-	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc_Dom1,Conc_Dom2,Conc,Pot
+	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc_Dom1,Conc_Dom2,Conc,Pot_Dom1,Pot_Dom2,Pot
 	INTEGER :: iter,interface_width
 	CHARACTER(LEN=100) :: filename
 	CHARACTER(LEN=10) :: iteration
@@ -262,7 +294,6 @@ implicit none
 
 	
 	write(*,*) "Write Output at iter=",iter 
-	write(*,*) "Interface Width = ", interface_width	
 	write(*,*) "Maximum Value of Dom1=", MAXVAL(Conc(1:nx,1:ny/2)) 
 	write(*,*) "Minimum Value of Dom1=", MINVAL(Conc(1:nx,1:ny/2))
 	write(*,*) "Total Conc in Dom1=", sum(Conc(1:nx,1:ny/2))	
@@ -303,17 +334,24 @@ implicit none
 	write(1) Conc_Dom2(1:nx,1:ny)
 	close(1)
 
-	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Conc_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Pot_Dom1_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-	write(1) Conc(1:nx,1:ny)
+	write(1) Pot_Dom1(1:nx,1:ny)
 	close(1)
 
-	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_ChemPot_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_Pot_Dom2_t'//trim(iteration)//'_'//trim(dates)//'.dat'
 	write(*,*) filename
 	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
-	write(1) Pot(1:nx,1:ny)
+	write(1) Pot_Dom2(1:nx,1:ny)
 	close(1)
+
+! 	filename='data/'//trim(s)//'/'//trim(dates)//'/'//trim(s)//'_ChemPot_t'//trim(iteration)//'_'//trim(dates)//'.dat'
+! 	write(*,*) filename
+! 	open(1,file=filename,form='unformatted',STATUS='REPLACE',ACTION='READWRITE')
+! 	write(1) Pot(1:nx,1:ny)
+! 	close(1)
 
 end subroutine
 !*********************************************************************
