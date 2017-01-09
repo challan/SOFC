@@ -108,7 +108,7 @@ implicit none
 end subroutine
 !*********************************************************************
 !*********************************************************************
-subroutine calculate_potentials(Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2)
+subroutine calculate_potentials(Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2,Pot1_Conc,Pot2_Conc)
 use simulation
 implicit none
 ! Impose periodic boundary conditions
@@ -164,12 +164,11 @@ implicit none
 ! Impose periodic boundary conditions
 	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2,div_Dom1,div_Dom2
 	real(kind=DBL) :: Mob_Dom1, Mob_Dom2, dotprod_Dom1, dotprod_Dom2, mag_grad_Psi_Dom1, mag_grad_Psi_Dom2 
-	integer :: i,j,interface_width, icenter
+	integer :: i,j,interface_width
 	
 	Mob_Dom1=1.d0
 	Mob_Dom2=1.d0
 	interface_width=0
-	icenter=51
 	
 	do i=1,nx
 	do j=1,ny
