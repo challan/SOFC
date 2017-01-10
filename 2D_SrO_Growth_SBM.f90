@@ -21,9 +21,9 @@ real(kind=dbl),parameter :: CSr_s=0.08d0, CSr_p=0.9d0, CSr_v=0.d0
 !Contact angle of the particle on the substrate
 real(kind=dbl),parameter :: angle=70.d0
 ! I/O Variables
-integer,parameter        :: it_st=1, it_ed=10000, it_mod=2000
+integer,parameter        :: it_st=1000000, it_ed=5000000, it_mod=1000000
 character(len=100), parameter :: s = "SrO_on_LSCF"
-character(len=10), parameter :: dates="170105_A"
+character(len=10), parameter :: dates="170109_B"
 
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -38,26 +38,30 @@ integer:: iter,i,j,interface_width
 
   	iter=0
   	call initial_conds(Conc,Psi_Dom1,Psi_Dom2)
-	Conc_Dom1=Conc
-	Conc_Dom2=Conc
-	
-	!!Apply No-Flux BC for the concentration of Sr.
-	call boundary_conds_conc(Conc_Dom1,Conc_Dom2)	
+! 	Conc_Dom1=Conc
+! 	Conc_Dom2=Conc
+! 	
+! 	!Apply No-Flux BC for the concentration of Sr.
+! 	call boundary_conds_conc(Conc_Dom1,Conc_Dom2)	
+! 	
+! 	!Calculate chem. pot. for the concentration parameter
+! 	call calculate_potentials(Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2)	
+! 	
+!   	call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot_Dom1,Pot_Dom2,Pot,iter)
+
+	iter=it_st
+	call read_input(Conc_Dom1,Conc_Dom2,iter)
 	
 	!!Calculate chem. pot. for the concentration parameter
 	call calculate_potentials(Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2)	
 	
-  	call write_output(Conc_Dom1,Conc_Dom2,Conc,Pot_Dom1,Pot_Dom2,Pot,iter)
-
-! 	iter=0
-! 	call read_input(Conc_Dom1,Conc_Dom2,iter)
 !  	Conc=Conc_Dom1*Psi_Dom1+Conc_Dom2*Psi_Dom2
 ! 	do j=1,ny
 ! 		write(*,*) Conc(51,j)
 ! 	enddo
 ! 	stop
 	
-do iter=it_st,it_ed
+do iter=it_st+1,it_ed
 
 	!!Apply No-Flux BC for the concentration of Sr.
 	call boundary_conds_conc(Conc_Dom1,Conc_Dom2)	
@@ -108,14 +112,14 @@ implicit none
 end subroutine
 !*********************************************************************
 !*********************************************************************
-subroutine calculate_potentials(Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2,Pot1_Conc,Pot2_Conc)
+subroutine calculate_potentials(Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2)
 use simulation
 implicit none
 ! Impose periodic boundary conditions
 	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Conc_Dom1,Conc_Dom2,Psi_Dom1,Psi_Dom2,Pot_Dom1,Pot_Dom2
 	real(kind=DBL), DIMENSION(0:nx+1,0:ny+1) :: Hfunc_Dom1,dgdc_Dom2,free_eg_Dom2 
 	integer :: i,j	
-	real(kind=DBL) :: pi
+	real(kind=DBL) :: pi, Conc_Dm2
 	pi=4.*atan(1.)
 	
 	!For Domain 1
@@ -127,12 +131,14 @@ implicit none
 	free_eg_Dom2=0.25d0*W*(Conc_Dom2**2.d0)*((CSr_p-Conc_Dom2)**2.d0)
 	!First derivative of the bulk free e.g. density
 	dgdc_Dom2=.5d0*W*Conc_Dom2*(2.d0*Conc_Dom2-CSr_p)*(Conc_Dom2-CSr_p)
-
+	
 	forall(i=1:nx,j=1:ny)
- 		Pot_Dom2(i,j)=dgdc_Dom2(i,j)-eps2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Conc_Dom2(i+1,j)-Conc_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Conc_Dom2(i,j)-Conc_Dom2(i-1,j))) / (2.d0*dx*dx) + &
-    			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Conc_Dom2(i,j+1)-Conc_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Conc_Dom2(i,j)-Conc_Dom2(i,j-1))) / (2.d0*dy*dy))/(Psi_Dom2(i,j)+eta) - &
-    			 ((Psi_Dom2(i+1,j)-Psi_Dom2(i-1,j)/(2.d0*dx))**2.d0+(Psi_Dom2(i,j+1)-Psi_Dom2(i,j-1)/(2.d0*dy))**2.d0)**0.5d0*(eps2*2.d0*free_eg_Dom2(i,j))**0.5d0*(cos(angle*pi/180.d0))/(Psi_Dom2(i,j)+eta)
+ 		Pot_Dom2(i,j)=dgdc_Dom2(i,j)-eps2*( ((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Conc_Dom2(i+1,j)-Conc_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Conc_Dom2(i,j)-Conc_Dom2(i-1,j))) / (2.d0*dx*dx) + &
+		((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Conc_Dom2(i,j+1)-Conc_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Conc_Dom2(i,j)-Conc_Dom2(i,j-1))) / (2.d0*dy*dy) )/(Psi_Dom2(i,j)+eta) - &
+		(((Psi_Dom2(i+1,j)-Psi_Dom2(i-1,j))/(2.d0*dx))**2.d0 + ((Psi_Dom2(i,j+1)-Psi_Dom2(i,j-1))/(2.d0*dy))**2.d0)**0.5d0*(eps2*2.d0*free_eg_Dom2(i,j))**0.5d0*(cos(angle*pi/180.d0))/(Psi_Dom2(i,j)+eta)
    	end forall
+	
+
 	
 end subroutine
 !*********************************************************************
@@ -185,25 +191,25 @@ implicit none
 		! For Domain 1. Substrate/particle interface is defined as grad Psi_Dom1 dot grad Conc_Dom1 < 0
 		! For Domain 2. Substrate/particle interface is defined as grad Psi_Dom2 dot grad Conc_Dom2 > 0
 
-     	if (mag_grad_Psi_Dom2 .gt. 0.3d0 .and. Conc_Dom2(i,j) .gt. 0.5d0 ) then
+     	if (mag_grad_Psi_Dom2 .gt. 0.2d0 .and. Conc_Dom2(i,j) .gt. 0.4d0 ) then
     		interface_width=interface_width+1
-    		
     		div_Dom1(i,j)=Mob_Dom1*(((Psi_Dom1(i,j)+Psi_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
     			 ((Psi_Dom1(i,j)+Psi_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy)) - & 
-     			 mag_grad_Psi_Dom1*Mob_Dom1*(Pot_Dom1(i,j)-Pot_Dom2(i,j))       			 
+     			 mag_grad_Psi_Dom1*(Pot_Dom1(i,j)-Pot_Dom2(i,j)+0.0518)       			 
     		div_Dom2(i,j)=Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
     			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy)) - &
-     			 mag_grad_Psi_Dom2*Mob_Dom2*(Pot_Dom2(i,j)-Pot_Dom1(i,j))  	    			  								 
+     			 mag_grad_Psi_Dom2*(Pot_Dom2(i,j)-Pot_Dom1(i,j)-0.0518)  	    			  								 
     	else
-    		div_Dom1(i,j)=Mob_Dom1*(((Psi_Dom1(i,j)+Psi_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
-    			 ((Psi_Dom1(i,j)+Psi_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy))
-    		div_Dom2(i,j)=Mob_Dom2*(((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
-    			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy))	
+    		div_Dom1(i,j)=Mob_Dom1*( ((Psi_Dom1(i,j)+Psi_Dom1(i+1,j))*(Pot_Dom1(i+1,j)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i-1,j))*(Pot_Dom1(i,j)-Pot_Dom1(i-1,j))) / (2.d0*dx*dx) + &
+    			 ((Psi_Dom1(i,j)+Psi_Dom1(i,j+1))*(Pot_Dom1(i,j+1)-Pot_Dom1(i,j))-(Psi_Dom1(i,j)+Psi_Dom1(i,j-1))*(Pot_Dom1(i,j)-Pot_Dom1(i,j-1))) / (2.d0*dy*dy) )
+    			 
+    		div_Dom2(i,j)=Mob_Dom2*( ((Psi_Dom2(i,j)+Psi_Dom2(i+1,j))*(Pot_Dom2(i+1,j)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i-1,j))*(Pot_Dom2(i,j)-Pot_Dom2(i-1,j))) / (2.d0*dx*dx) + &
+    			 ((Psi_Dom2(i,j)+Psi_Dom2(i,j+1))*(Pot_Dom2(i,j+1)-Pot_Dom2(i,j))-(Psi_Dom2(i,j)+Psi_Dom2(i,j-1))*(Pot_Dom2(i,j)-Pot_Dom2(i,j-1))) / (2.d0*dy*dy) )	
 		endif      			  								 
 
    	enddo
-   	enddo
-   	   	 		
+   	enddo	   
+ 	 		
 	!Iteration in Domain 1
 	Conc_Dom1=Conc_Dom1+dt*div_Dom1/(Psi_Dom1+eta)
 	
@@ -225,7 +231,7 @@ implicit none
 	CHARACTER(LEN=4) :: format_string	
 			
 !Concentration in the substrate	
-	Conc(:,1:ny/2)=CSr_s*1.0d0
+	Conc(:,1:ny/2)=CSr_s*1.1d0
 
 !Concentration in the vapor	
 	Conc(:,ny/2+1:ny)=CSr_v
