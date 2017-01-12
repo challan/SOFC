@@ -8,35 +8,31 @@ PRO FFT_filtering_2D
 
   mainDir='~/Desktop/SOFC/AIST_LSCF/control/reconstruction/'
 
-  restore,mainDir+'data/AIST_LSCF_0h_200_200_200_Stage1_160924.sav';phi
-  phi1=phi
-  phi1=phi1[0:199,0:199,0:199]
+  restore,mainDir+'data/AIST_LSCF_0h_694_302_630_Stage1_2DFFT_GrayScale_170111.sav';magnifiedphi
+ 
+  writeFortranData, magnifiedphi, '~/Desktop/SOFC/AIST_LSCF/control/reconstruction/data/AIST_LSCF_0h_694_302_630_Stage1_2DFFT_Grayscale_170111.dat'
 
-  slice=dblarr(200,200)
-  slice[*,*]=phi1[*,*,0] 
-;  p = IMAGE(slice, LAYOUT = [3, 2, 1], min_value=0,max_value=255,margin=0.01)
-;  slice[*,*]=phi1[0,*,*]
-;  p = IMAGE(slice, LAYOUT = [3, 2, 2], min_value=0,max_value=255,margin=0.01,/current)
-;  slice[*,*]=phi1[*,0,*]
-;  p = IMAGE(slice, LAYOUT = [3, 2, 3], min_value=0,max_value=255,margin=0.01,/current)  
-
-  restore,mainDir+'data/AIST_LSCF_0h_200_200_200_Stage1_2DFFT_160930.sav';phi
+    phi=magnifiedphi
+ 
+;    pore_wh=where(phi lt 90)
+;    LSCF_wh=where(phi ge 90)
+;    
+;    phi[pore_wh]=0.d0
+;    phi[LSCF_wh]=1.d0
+ 
+    pore_wh=where(phi lt 40)
+    pore_int_wh=where((phi ge 40) and (phi lt 90))
+    LSCF_wh=where(phi gt 140)
+    LSCF_int_wh=where((phi le 140) and (phi ge 90))
   
-  phi2=phi
-  phi2=phi2[0:199,0:199,0:199]
+    phi[pore_wh]=0.d0
+    phi[pore_int_wh]= (phi[pore_int_wh]-40.d0)/100.d0
+    phi[LSCF_wh]=1.d0
+    phi[LSCF_int_wh]= (phi[LSCF_int_wh]-40.d0)/100.d0
 
-  phi=0b
-
-  slice=dblarr(200,200)
-  slice[*,*]=phi2[*,*,0]
-;  p = IMAGE(slice, LAYOUT = [3, 2, 4], min_value=0,max_value=255,margin=0.01,/current)
-;  slice[*,*]=phi2[0,*,*]
-;  p = IMAGE(slice, LAYOUT = [3, 2, 5], min_value=0,max_value=255,margin=0.01,/current)
-;  slice[*,*]=phi2[*,0,*]
-;  p = IMAGE(slice, LAYOUT = [3, 2, 6], min_value=0,max_value=255,margin=0.01,/current)
-
-  draw_contour,mainDir,phi1,phi2
-  stop
+    writeFortranData, phi, '~/Desktop/SOFC/AIST_LSCF/control/reconstruction/data/AIST_LSCF_0h_694_302_630_Stage1_2DFFT_OP_170111.dat'
+    print,'done writing'
+stop
 
   phi=dblarr(nx,ny,nz)
   z=32
@@ -50,12 +46,7 @@ PRO FFT_filtering_2D
     logpower = ALOG10(ABS(slice_fft)^2)
 
 
-    NY_m=NY/2
-    NX_m=NX/2
-    wx=2 ; width of frequency band where the signal is unfiltered
-    wy=2 ; width of frequency band where the signla is filtered
-    sigma_y = wy
-    sigma_x = wx
+
     Re=real_part(slice_fft)
     Im=imaginary(slice_fft)
     y_indices=FLTARR(nx,ny)
@@ -66,12 +57,19 @@ PRO FFT_filtering_2D
     for j=0, ny-1 do begin
       y_indices[*,j]=float(j)
     endfor
-    
-    char_freq1=NX_m-80;253
-    char_freq2=NX_m+80;441
+   
+   
+    NY_m=NY/2
+    NX_m=NX/2
+    sigma_y = 2
+    char_freq1=NX_m-92;253, corresponds to frequency=-0.133
+    char_freq2=NX_m+92;441, corresponds to frequency=0.133
     screening_width1=50 ;filtering the low-frequency noise
     screening_width2=200 ; filtering the high-frequency noise
     delta=0.5
+ 
+    ;Apply filter along the y-direction at range of x-coordinates [char_freq1-screening_width2:char_freq1+screening_width1] and [char_freq2-screening_width1:char_freq2+screening_width2] 
+    ;The tanh function ensures a smooth filtering  
     Re[char_freq1-screening_width2:char_freq1+screening_width1,*]= Re[char_freq1-screening_width2:char_freq1+screening_width1,*]*((0.5-0.5*tanh((y_indices[char_freq1-screening_width2:char_freq1+screening_width1,*]-(double(NY_m)-sigma_y))/delta))+$
     (0.5+0.5*tanh((y_indices[char_freq1-screening_width2:char_freq1+screening_width1,*]-(double(NY_m)+sigma_y))/delta)))
     Re[char_freq2-screening_width1:char_freq2+screening_width2,*]= Re[char_freq2-screening_width1:char_freq2+screening_width2,*]*((0.5-0.5*tanh((y_indices[char_freq2-screening_width1:char_freq2+screening_width2,*]-(double(NY_m)-sigma_y))/delta))+$
@@ -81,22 +79,11 @@ PRO FFT_filtering_2D
     Im[char_freq2-screening_width1:char_freq2+screening_width2,*]= Im[char_freq2-screening_width1:char_freq2+screening_width2,*]*((0.5-0.5*tanh((y_indices[char_freq1-screening_width2:char_freq1+screening_width1,*]-(double(NY_m)-sigma_y))/delta))+$
     (0.5+0.5*tanh((y_indices[char_freq1-screening_width2:char_freq1+screening_width1,*]-(double(NY_m)+sigma_y))/delta)))
     
-    ;Apply filter along the y-direction at range of x-coordinates [0:NX_m-wx] and [NX_m+wx:NX-1]
-;    Re[char_freq1-screening_width2:char_freq1+screening_width1,*]= Re[char_freq1-screening_width2:char_freq1+screening_width1,*]*(1-exp(-1.*(y_indices[char_freq1-screening_width2:char_freq1+screening_width1,*]-double(NY_m))^2./(2.*sigma_y^2.)))
-;    Re[char_freq2-screening_width1:char_freq2+screening_width2,*]= Re[char_freq2-screening_width1:char_freq2+screening_width2,*]*(1-exp(-1.*(y_indices[char_freq2-screening_width1:char_freq2+screening_width2,*]-double(NY_m))^2./(2.*sigma_y^2.)))
-;    Im[char_freq1-screening_width2:char_freq1+screening_width1,*]= Im[char_freq1-screening_width2:char_freq1+screening_width1,*]*(1-exp(-1.*(y_indices[char_freq1-screening_width2:char_freq1+screening_width1,*]-double(NY_m))^2./(2.*sigma_y^2.)))
-;    Im[char_freq2-screening_width1:char_freq2+screening_width2,*]= Im[char_freq2-screening_width1:char_freq2+screening_width2,*]*(1-exp(-1.*(y_indices[char_freq2-screening_width1:char_freq2+screening_width2,*]-double(NY_m))^2./(2.*sigma_y^2.)))
-
-    ;Apply filter along the x-direction at range of y-coordinates [NY_m-wy:NY_m+wy]
-;    Re[NX_m-wx:NX_m+wx,NY_m-wy:NY_m+wy]=Re[NX_m-wx:NX_m+wx,NY_m-wy:NY_m+wy]*exp(-1.*(x_indices[NX_m-wx:NX_m+wx,NY_m-wy:NY_m+wy]-double(NX_m))^2./(2.*sigma_x^2.))
-;    Im[NX_m-wx:NX_m+wx,NY_m-wy:NY_m+wy]=Im[NX_m-wx:NX_m+wx,NY_m-wy:NY_m+wy]*exp(-1.*(x_indices[NX_m-wx:NX_m+wx,NY_m-wy:NY_m+wy]-double(NX_m))^2./(2.*sigma_x^2.))
-
     slice_fft_filtered=dcomplex(Re,Im)
     logpower_filtered = alog10(ABS(slice_fft_filtered)^2)
     neg=where(logpower_filtered lt -10.)
 
     logpower_filtered[neg]=-10.0
-
 
     filtered_slice=fft(slice_fft_filtered,/INVERSE, /CENTER)
 
@@ -112,17 +99,34 @@ PRO FFT_filtering_2D
 ;    p = IMAGE(filtered_slice_real, LAYOUT = [2, 2, 3], min_value=0,max_value=255, /CURRENT)
 ;    stop
   endfor
-  ;p1 = IMAGE(BYTSCL(abs(Re2-slice)))
 
-  phi=phi[0:199,0:199,0:199]
-  
+
   wh_under=where(phi lt 0)
   phi[wh_under]=0.d0
   wh_over=where(phi gt 255)
   phi[wh_over]=255.d0
-    
-  save,phi,filename=mainDir+'data/AIST_LSCF_0h_200_200_200_Stage1_2DFFT_160930.sav';phi
+
+  magnifiedphi = CONGRID(phi, 694, 302, 630, /INTERP)
+
+    save,phi,filename=mainDir+'data/AIST_LSCF_0h_694_302_360_Stage1_2DFFT_GrayScale_170111.sav';phi
+    save,magnifiedphi,filename=mainDir+'data/AIST_LSCF_0h_694_302_630_Stage1_2DFFT_GrayScale_170111.sav';phi
   
+;  pore_wh=where(phi lt 20)
+;  pore_int_wh=where((phi ge 20) and (phi lt 90))
+;  LSCF_wh=where(phi gt 150)
+;  LSCF_int_wh=where((phi le 150) and (phi ge 90))
+; 
+;  phi[pore_wh]=0.d0
+;  phi[pore_int_wh]= (phi[pore_int_wh]-20.d0)/140.d0
+;  phi[LSCF_wh]=1.d0
+;  phi[LSCF_int_wh]= (phi[LSCF_int_wh]-90.d0)/120.d0  
+;  
+;  
+;  
+;
+;
+;writeFortranData, phi, '~/Desktop/SOFC/AIST_LSCF/control/reconstruction/data/AIST_LSCF_0h_694_302_360_Stage1_2DFFT_OP_170111.dat'
+;writeFortranData, magnifiedphi, '~/Desktop/SOFC/AIST_LSCF/control/reconstruction/data/AIST_LSCF_0h_694_302_630_Stage1_2DFFT_OP_170111.dat'
 
 END
 PRO makeplot, filename, pdf1, pdf2
@@ -219,5 +223,10 @@ PRO readForData,filename,size, data
   data = DBLARR(size[0],size[1],size[2])
   OPENR, lun, filename, /GET_LUN, /F77_UNFORMATTED
   READU, lun, data
+  FREE_LUN, lun
+END
+PRO writeFortranData, data, filename
+  OPENW, lun,filename, /GET_LUN, /F77_UNFORMATTED
+  WRITEU, lun, data
   FREE_LUN, lun
 END

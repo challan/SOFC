@@ -9,12 +9,12 @@ PRO OTSU_Method
   mainDir='~/Desktop/SOFC/AIST_LSCF/control/reconstruction/'  
   
  
-  restore,mainDir+'data/AIST_LSCF_0h_200_200_200_Stage1_160924.sav';phi
+  restore,mainDir+'data/AIST_LSCF_0h_694_302_360_Stage1_2DFFT_GrayScale_170111.sav';phi
 
-  wh_under=where(phi lt 0)
-  phi[wh_under]=0.d0
-  wh_over=where(phi gt 255)
-  phi[wh_over]=255.d0
+;  wh_under=where(phi lt 0)
+;  phi[wh_under]=0.d0
+;  wh_over=where(phi gt 255)
+;  phi[wh_over]=255.d0
 
   pdf1 = HISTOGRAM(phi,min=0,max=255)
   pdf1=double(pdf1)
@@ -22,20 +22,20 @@ PRO OTSU_Method
   print,'threshold = ',threshold1
   
   
-  restore,mainDir+'data/AIST_LSCF_0h_200_200_200_Stage1_2DFFT_160930.sav';phi
+  restore,mainDir+'data/AIST_LSCF_0h_694_302_630_Stage1_2DFFT_GrayScale_170111.sav';phi
   
-  wh_under=where(phi lt 0)
-  phi[wh_under]=0.d0
-  wh_over=where(phi gt 255)
-  phi[wh_over]=255.d0
+;  wh_under=where(phi lt 0)
+;  phi[wh_under]=0.d0
+;  wh_over=where(phi gt 255)
+;  phi[wh_over]=255.d0
   
-  pdf2 = HISTOGRAM(phi,min=0,max=255)
+  pdf2 = HISTOGRAM(magnifiedphi,min=0,max=255)
   pdf2=double(pdf2)
   Find_threshold,pdf2,threshold1
   print,'threshold = ',threshold1
  
  
-  filename=mainDir+'contours/AIST_LSCF_0h_200_200_200_Stage1_2DFFT_160930_histograms.eps'
+  filename=mainDir+'data/AIST_LSCF_0h_694_302_360_vs_630_Stage1_2DFFT_GrayScale_170111.eps'
   makeplot, filename, pdf1, pdf2
  stop
 
@@ -139,7 +139,7 @@ Plot, pdf2, $
 
   OPLOT,pdf1,color=[25],THICK=5
   OPLOT,pdf2,color=[250],THICK=5
-;  OPLOT,[139,139],[0,120000],Linestyle=0,THICK=5,Color=[25]   
+  OPLOT,[90,90],[0,max(pdf2)],Linestyle=0,THICK=5,Color=[25]   
 ;  OPLOT,[128,128],[0,120000],Linestyle=0,THICK=5,Color=[250]
   DEVICE, /SYMBOL, FONT_INDEX=9
   DEVICE, /TIMES, FONT_INDEX=4
@@ -147,11 +147,11 @@ Plot, pdf2, $
   background_color=[255]
   Lines=[0,0]
   thick=[5,5]
-  items=['bf filtering','af filtering']
+  items=['[694,302,360]','[694,302,630]']
   colors=[25,250]
   ; Location of legend in data coordinates.
   yloc = (!Y.CRange[1] - !Y.CRange[0]) * 0.97 + !Y.CRange[0]
-  xloc = (!X.CRange[1] - !X.CRange[0]) * 0.6 + !X.CRange[0]
+  xloc = (!X.CRange[1] - !X.CRange[0]) * 0.5 + !X.CRange[0]
 
   ; Add the legend.
   Al_Legend, items, Lines=lines,Color=colors, Background_color=background_color, $

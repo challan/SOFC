@@ -9,29 +9,38 @@ PRO FFT_filtering_1D
   nz=sizeArr[2]
 
   line=dblarr(nx)
+  char_len_array=dblarr(nz)
+; IDL FFT command with /center option.  
+;For an even number of points the first element will correspond to the Nyquist frequency component  
   frequency=dblarr(nx)
   for i=1,nx-1 do begin
     frequency[i]=-1.0*(nx/2.-1.)/(nx)+(i-1.)/nx
   endfor
-    frequency[0]=0.5
+    frequency[0]=0.5 ;Nyquist frequency component
 
-
-  z=32
-    filename='~/Desktop/SOFC/AIST_LSCF/control/Rotated Cropped Normalized Images/AIST_LSCF_0h_'+string(z,format='(I3.3)')+'.tif'
-    print,filename
-    slice = READ_IMAGE(filename)
+print,1/7.5585117
+  print,frequency[nx/2+92]
+    print,frequency[nx/2-92]
+  stop
+  for z=32,391 do begin
+  filename='~/Desktop/SOFC/AIST_LSCF/control/Rotated Cropped Normalized Images/AIST_LSCF_0h_'+string(z,format='(I3.3)')+'.tif'
+  print,filename
+  slice = READ_IMAGE(filename)
 ;    p=image(slice,min_value=0,max_value=255,layout=[1,2,1])
 ;   
 ;    slice=(slice-100.d0)*255d0/155.d0
 ;    p=image(slice,min_value=0,max_value=255,layout=[1,2,2],/current)
     
-    line[*]=slice[*,130]
-
-    find_peakwavelength, line,nx
-    
-
-    line_fft=fft(line,-1, /CENTER)
-    logpower = ALOG10(ABS(line_fft)^2)
+  line[*]=slice[*,150]
+  slice=0b
+  find_peakwavelength, line,nx,char_len
+  char_len_array[z-32]=char_len
+endfor 
+  avg_char_len=mean(char_len_array)
+  print,'Avg. Char. Length=',avg_char_len
+  stop
+  line_fft=fft(line,-1, /CENTER)
+  logpower = ALOG10(ABS(line_fft)^2)
 
 
     Re=real_part(line_fft)
@@ -118,13 +127,13 @@ PRO stats, data1,data2,nx,penalty1,penalty2
   
 ;  print,strcompress(var1),strcompress(var2)
 END
-PRO find_peakwavelength, data,nx
+PRO find_peakwavelength, data,nx,char_len
   wh_peaks=where(data gt 150)
   no_peaks=size(wh_peaks,/dimensions)
   distance_array=intarr(no_peaks)
   distance_array[*]=-1  
   k=0
-  peak_position1=700
+  peak_position1=700 ;First peak position is greater than nx so that the first element of the distance_array is going to be negative.
   for i=2,nx-2 do begin
     x1=data[i]-150.d0
     x2=data[i-1]-150.d0
@@ -132,18 +141,17 @@ PRO find_peakwavelength, data,nx
     if (x3 gt 0) then begin ; if you are in the same phase
      deriminus=data[i]-data[i-1]
      deriplus=data[i+1]-data[i] 
-    ; if you are at the index corresponding to where the bright peak is located
-    if ((data[i] gt 150) and (deriminus gt 0) and (deriplus lt 0)) then begin
-      peak_position2=i
-      distance_array[k]=peak_position2-peak_position1     
-      peak_position1=peak_position2
-      k=k+1
-      
-    endif      
+    ; if you are at the index corresponding to where the bright peak is located (/\: positive gradient with backward diff, negative grad. w/ forward diff)
+      if ((data[i] gt 150) and (deriminus gt 0) and (deriplus lt 0)) then begin
+        peak_position2=i
+        distance_array[k]=peak_position2-peak_position1     
+        peak_position1=peak_position2
+        k=k+1     
+      endif      
     endif
     
-    if (x3 lt 0) then begin
-      peak_position1=700
+    if (x3 lt 0) then begin ; if you are not in the same phase
+      peak_position1=700 ;reset the peak_position1 such that the distance between the vertical peaks across the pore phase is not considered.
     endif
     
   endfor
@@ -152,9 +160,10 @@ PRO find_peakwavelength, data,nx
   no_intervals=size(wh_intervals,/dimensions)
   interval_array=dblarr(no_intervals)
   interval_array[*]=distance_array[wh_intervals]
-  print,mean(interval_array)
+  char_len=mean(interval_array)
+  print,char_len
   
-  stop
+  
   
 
 END
