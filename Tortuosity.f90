@@ -28,38 +28,75 @@ implicit none
 INTEGER, PARAMETER :: SGL = SELECTED_REAL_KIND (p=6, r=37) ! Single data kind
 INTEGER, PARAMETER :: DBL = SELECTED_REAL_KIND (p=13)      ! Double data kind
 !----------------------------------------------------------+
-integer,parameter        ::  px=10,py=7,pz=10
+integer,parameter        ::  py=688,px=296,pz=624
 end module simulation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 Program Tortuosity
 use simulation
 Implicit None
 !......................................................................................... 
-Integer:: phi(1:px,1:py,1:pz)
+Integer:: i,j,k,phi(1:px,1:py,1:pz)
 Real:: DIST(1:px,1:py,1:pz)
+real(kind=8)::phi_dbl(1:px,1:py,1:pz)
+character(len=100) :: filename
 
 phi(:,:,:)=0
-! phi(5,1:py,5)=1
-! phi(4,5:py,5)=1
-! phi(3,py,5)=1
+
 !! Initial Condition 1
-phi(3,1:2,5)=1
-phi(4,1:3,5)=1
-phi(5,:,5)=1
-phi(4,5:py,4:5)=1
-phi(3,6:py,4:5)=1
-phi(5,py,4)=1
+! phi(3,1:2,5)=1
+! phi(4,1:3,5)=1
+! phi(5,:,5)=1
+! phi(4,5:py,4:5)=1
+! phi(3,6:py,4:5)=1
+! phi(5,py,4)=1
 
 !! Initial Condition 2
 ! phi(2,1:3,5)=1
 ! phi(2:5,4,5)=1
 ! phi(5,5:py,5)=1
 
+!! Initial Condition 3
+! phi(5,1:py,5)=1
+! phi(4,5:py,5)=1
+! phi(3,py,5)=1
+
+!! Initial Condition 4
+! phi(2,1:2,5)=1
+! phi(2:9,3,5)=1
+! phi(7,4:py,5)=1
+! phi(9,1:2,5)=1
+
+!! Initial Condition 5
+! phi(5,1:2,5)=1
+! phi(5,5:py,5)=1
+
+!!Initial Conditions - LSCF microstructure
+!! Reads in Level-Set Smoothed LSCF microstructure (double precision)
+filename='../as_fired/rearranged_dimensions/AIST_LSCF_SurfMob_t200000_0h_296_688_624_lev074lap30.dat' 
+ 	write(*,*) filename
+ 	open  ( unit = 1, file = filename, ACCESS="STREAM", form = 'unformatted')
+	read  (1) phi_dbl(1:px,1:py,1:pz)
+	close(1)
+	print*,minval(phi_dbl), maxval(phi_dbl)
+
+!! Convert double precision to integer type
+!! Since we want tortuosity of the pore phase, set the pore phase as phi=1 and LSCF phase as phi=0
+	Do i=1,px; Do j=1,py; Do k=1,pz
+		if (phi_dbl(i,j,k) .lt. 0.d0) then 
+			phi(i,j,k)=1
+		else
+			phi(i,j,k)=0
+		endif
+	EndDo; EndDo; EndDo	
+		
+	
 DIST(:,:,:) = 0.d0	
 
 	!call the subroutine to calculate tortuosity
 	call quasi_euclidian(phi,DIST)
-
+	
+	! print*, dist(2:px-1,py,2:pz-1)
+	
 End Program Tortuosity
 !   ____                  _   ______           _ _     _ _             
 !  / __ \                (_) |  ____|         | (_)   | (_)            
@@ -108,6 +145,7 @@ Real:: dist(1:px,1:py,1:pz)
 	EndDo
  
 	Do j=3,py
+		print*,'j = ',j
 		Do i=2,px-1
 			Do k=2,pz-1
 				if (phi(i,j,k) .eq. 1) then
@@ -142,11 +180,7 @@ Real:: dist(1:px,1:py,1:pz)
 		EndIf	
 	EndDo; EndDo
 
-	print*,DIST(5,py,5),DIST(4,py,5),DIST(3,py,5)
-	print*,DIST(5,py,4),DIST(4,py,4),DIST(3,py,4)
-
 	print*, 'counter: ',counter
-
 	print*, 'Tortuosity: ', (dble(sum(DIST(2:px-1,py,2:pz-1)))/(dble(counter)))/(dble(py))
 
 END SUBROUTINE
@@ -305,7 +339,7 @@ if(dist(i,j-1,k) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here1'	
+	! print*,i,j,k,dist(i,j,k),'here1'	
 endif
 if(dist(i-1,j-1,k) .ne. 0.d0) then
 	new_dist=dist(i-1,j-1,k)+sqrt(2.d0)
@@ -314,7 +348,7 @@ if(dist(i-1,j-1,k) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here2'
+	! print*,i,j,k,dist(i,j,k),'here2'
 endif			
 if(dist(i+1,j-1,k) .ne. 0.d0) then
 	new_dist=dist(i+1,j-1,k)+sqrt(2.d0)
@@ -323,7 +357,7 @@ if(dist(i+1,j-1,k) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here3'	
+	! print*,i,j,k,dist(i,j,k),'here3'	
 endif			
 if(dist(i,j-1,k-1) .ne. 0.d0) then
 	new_dist=dist(i,j-1,k-1)+sqrt(2.d0)
@@ -332,7 +366,7 @@ if(dist(i,j-1,k-1) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here4'
+	! print*,i,j,k,dist(i,j,k),'here4'
 endif				
 if(dist(i,j-1,k+1) .ne. 0.d0) then
 	new_dist=dist(i,j-1,k+1)+sqrt(2.d0)
@@ -341,7 +375,7 @@ if(dist(i,j-1,k+1) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here5'	
+	! print*,i,j,k,dist(i,j,k),'here5'	
 endif		
 !! Calculate distances from the nearest neighbors within the same plane
 if(dist(i-1,j,k-1) .ne. 0.d0) then
@@ -351,7 +385,7 @@ if(dist(i-1,j,k-1) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here6'
+	! print*,i,j,k,dist(i,j,k),'here6'
 endif
 if(dist(i-1,j,k) .ne. 0.d0) then
 	new_dist=dist(i-1,j,k)+1.d0
@@ -360,7 +394,7 @@ if(dist(i-1,j,k) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here7'
+	! print*,i,j,k,dist(i,j,k),'here7'
 endif
 if(dist(i-1,j,k+1) .ne. 0.d0) then
 	new_dist=dist(i-1,j,k+1)+sqrt(2.d0)
@@ -369,7 +403,7 @@ if(dist(i-1,j,k+1) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here8'
+	! print*,i,j,k,dist(i,j,k),'here8'
 endif				
 if(dist(i,j,k-1) .ne. 0.d0) then
 	new_dist=dist(i,j,k-1)+1.d0
@@ -378,7 +412,7 @@ if(dist(i,j,k-1) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here9'
+	! print*,i,j,k,dist(i,j,k),'here9'
 endif	
 if(dist(i,j,k+1) .ne. 0.d0) then
 	new_dist=dist(i,j,k+1)+1.d0
@@ -387,7 +421,7 @@ if(dist(i,j,k+1) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here10'
+	! print*,i,j,k,dist(i,j,k),'here10'
 endif
 				
 if(dist(i+1,j,k-1) .ne. 0.d0) then
@@ -397,7 +431,7 @@ if(dist(i+1,j,k-1) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here11'
+	! print*,i,j,k,dist(i,j,k),'here11'
 endif	
 if(dist(i+1,j,k) .ne. 0.d0) then
 	new_dist=dist(i+1,j,k)+1.d0
@@ -406,7 +440,7 @@ if(dist(i+1,j,k) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here12'
+	! print*,i,j,k,dist(i,j,k),'here12'
 endif
 if(dist(i+1,j,k+1) .ne. 0.d0) then
 	new_dist=dist(i+1,j,k+1)+sqrt(2.d0)
@@ -415,6 +449,6 @@ if(dist(i+1,j,k+1) .ne. 0.d0) then
 		elseif (dist(i,j,k) .eq. 0.d0) then
 			dist(i,j,k)=new_dist
 		endif
-	print*,i,j,k,dist(i,j,k),'here13'
+	! print*,i,j,k,dist(i,j,k),'here13'
 endif
 END SUBROUTINE
